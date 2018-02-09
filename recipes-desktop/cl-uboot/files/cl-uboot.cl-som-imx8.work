@@ -1,0 +1,21 @@
+#!/bin/bash
+
+RADIO=$(ls /boot/*uboot* | awk '$0=$1" OFF "' ORS="")
+SELECT=$(dialog --no-items --backtitle "Select a U-Boot file:" --radiolist "Available U-Boot files:" 12 80 12 ${RADIO} --stdout)
+
+[[ -z ${SELECT} ]] && exit
+
+IMX_BOOT=${SELECT}
+
+RADIO=$(ls /sys/class/block/mmcblk[0,1]/size | awk -F"/" '($0="/dev/"$5)' | awk '$0=$1" OFF "' ORS="")
+SELECT=$(dialog --no-items --backtitle "Select a boot device:" --radiolist "Available boot devices:" 12 80 12 ${RADIO} --stdout)
+
+[[ -z ${SELECT} ]] && exit
+
+IMX_DEV=${SELECT}
+
+CMD="dd if=${IMX_BOOT} of=${IMX_DEV} bs=1K seek=33"
+
+${CMD} 2>&1 | dialog --backtitle "${CMD}" --programbox "U Boot flash result:" 12 80
+
+exit 0
