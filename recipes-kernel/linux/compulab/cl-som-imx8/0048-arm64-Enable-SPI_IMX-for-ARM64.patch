@@ -1,0 +1,26 @@
+From f29ce81235d1e7ce05e7ffc27f0e88e5b4db9f62 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Tue, 30 Jan 2018 12:40:31 +0200
+Subject: [PATCH 48/54] arm64: Enable SPI_IMX for ARM64
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ drivers/spi/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/spi/Kconfig b/drivers/spi/Kconfig
+index ee65f71..8e9acfb 100644
+--- a/drivers/spi/Kconfig
++++ b/drivers/spi/Kconfig
+@@ -289,7 +289,7 @@ config SPI_IMG_SPFI
+ 
+ config SPI_IMX
+ 	tristate "Freescale i.MX SPI controllers"
+-	depends on ARCH_MXC || COMPILE_TEST
++	depends on ARCH_MXC || COMPILE_TEST || ARCH_MXC_ARM64
+ 	select SPI_BITBANG
+ 	help
+ 	  This enables using the Freescale i.MX SPI controllers in master
+-- 
+1.9.1
+

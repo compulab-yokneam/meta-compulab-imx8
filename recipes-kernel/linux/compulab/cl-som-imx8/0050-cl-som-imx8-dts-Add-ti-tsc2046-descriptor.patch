@@ -1,0 +1,72 @@
+From b5bc27ee36cd2472fcfd99cd2e53807ab9bc4e79 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Tue, 30 Jan 2018 12:42:28 +0200
+Subject: [PATCH 50/54] cl-som-imx8: dts: Add ti,tsc2046 descriptor
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 41 ++++++++++++++++++++++++++++
+ 1 file changed, 41 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 7bcfa08..327f3b2 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -68,6 +68,13 @@
+ 			gpios = <&gpio1 13 GPIO_ACTIVE_HIGH>;
+ 			states = <900000 0x1 1000000 0x0>;
+ 		};
++
++		tsc2046reg: tsc2046-reg {
++			compatible = "regulator-fixed";
++			regulator-name = "tsc2046-reg";
++			regulator-min-microvolt = <3300000>;
++			regulator-max-microvolt = <3300000>;
++		};
+ 	};
+ 
+ 	simple_sound: sound {
+@@ -621,6 +628,40 @@
+ 	status = "okay";
+ };
+ 
++&ecspi3 {
++	fsl,spi-num-chipselects = <1>;
++	cs-gpios = <&gpio5 25 0>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_ecspi3>;
++	status = "okay";
++
++	touch:	tsc2046@0 {
++		compatible = "ti,tsc2046";
++		vcc-supply = <&tsc2046reg>;
++
++		reg = <0>;
++		spi-max-frequency = <1500000>;
++
++		interrupt-parent = <&pca9555>;
++		interrupts = <2 0>;
++		pendown-gpio = <&pca9555 2 0>;
++
++		ti,x-min = /bits/ 16 <0x0>;
++		ti,x-max = /bits/ 16 <0x0fff>;
++		ti,y-min = /bits/ 16 <0x0>;
++		ti,y-max = /bits/ 16 <0x0fff>;
++
++		ti,x-plate-ohms = /bits/ 16 <180>;
++		ti,pressure-max = /bits/ 16 <255>;
++
++		ti,debounce-max = /bits/ 16 <30>;
++		ti,debounce-tol = /bits/ 16 <10>;
++		ti,debounce-rep = /bits/ 16 <1>;
++
++		linux,wakeup;
++	};
++};
++
+ &usdhc1 {
+ 	pinctrl-names = "default", "state_100mhz", "state_200mhz";
+ 	pinctrl-0 = <&pinctrl_usdhc1>;
+-- 
+1.9.1
+

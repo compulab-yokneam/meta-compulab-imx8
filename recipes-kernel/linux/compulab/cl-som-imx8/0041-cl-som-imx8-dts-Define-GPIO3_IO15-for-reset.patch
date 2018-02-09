@@ -1,0 +1,27 @@
+From d549dd373e1200639842b40d932a6a4b611b38f9 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Sun, 28 Jan 2018 19:42:04 +0200
+Subject: [PATCH 41/54] cl-som-imx8: dts: Define GPIO3_IO15 for reset
+
+Define GPIO3_IO15 for the board reset.
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 34c82bc..d3d68cb 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -148,6 +148,7 @@
+ 		pinctrl_hog: hoggrp {
+ 			fsl,pins = <
+ 				MX8MQ_IOMUXC_GPIO1_IO12_GPIO1_IO12	0x16
++				MX8MQ_IOMUXC_NAND_RE_B_GPIO3_IO15	0x16
+ 			>;
+ 		};
+ 
+-- 
+1.9.1
+

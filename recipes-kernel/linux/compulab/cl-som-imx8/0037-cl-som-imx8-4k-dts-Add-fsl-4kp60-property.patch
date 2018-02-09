@@ -1,0 +1,29 @@
+From 0896ab843cdfd1ebefaf7ad5ef8c3e5e2e2a2812 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Sun, 21 Jan 2018 18:52:12 +0200
+Subject: [PATCH 37/54] cl-som-imx8-4k: dts: Add fsl,4kp60 property
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8-4k.dts | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8-4k.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8-4k.dts
+index 6855733..0c586d8 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8-4k.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8-4k.dts
+@@ -14,10 +14,6 @@
+ 
+ #include "cl-som-imx8.dts"
+ 
+-&dcss {
+-	disp-mode = <95>;	/* #97: 3840x2160p@30Hz 16:9 */
+-};
+-
+ &hdmi {
+-	video-mode = <95>;
++	fsl,4kp60;
+ };
+-- 
+1.9.1
+

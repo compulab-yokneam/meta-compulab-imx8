@@ -1,0 +1,36 @@
+From b3d673d4d38b58574c0682ab907e71e1acf12ff1 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Wed, 15 Nov 2017 12:24:37 +0200
+Subject: [PATCH 16/54] cl-som-imx8: dts: Tune in the usdhc2 interface
+
+1) Add wp-gpios.
+2) Set the correct power option.
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index e74290a..7d00150 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -266,6 +266,7 @@
+ 
+ 		pinctrl_usdhc2_gpio: usdhc2grpgpio {
+ 			fsl,pins = <
++				MX8MQ_IOMUXC_SD2_WP_GPIO2_IO20		0x41
+ 				MX8MQ_IOMUXC_SD2_CD_B_GPIO2_IO12	0x41
+ 				MX8MQ_IOMUXC_SD2_RESET_B_GPIO2_IO19	0x41
+ 			>;
+@@ -603,7 +604,9 @@
+ 	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_usdhc2_gpio>;
+ 	bus-width = <4>;
+ 	cd-gpios = <&gpio2 12 GPIO_ACTIVE_LOW>;
++	wp-gpios = <&gpio2 20 GPIO_ACTIVE_HIGH>;
+ 	vmmc-supply = <&reg_usdhc2_vmmc>;
++	no-1-8-v;
+ 	status = "okay";
+ };
+ 
+-- 
+1.9.1
+

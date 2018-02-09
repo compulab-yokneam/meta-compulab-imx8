@@ -1,0 +1,78 @@
+From dbbb94e68d3fb14fa7f0ea5d55d6b070c9adcc43 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Thu, 9 Nov 2017 16:36:27 +0200
+Subject: [PATCH 08/54] cl-som-imx8: dts: Enable analog sound card wm8731
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 40 ++++++++++++++++++++++++++++
+ 1 file changed, 40 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index d61bc65..591e380 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -50,6 +50,38 @@
+ 		};
+ 	};
+ 
++	simple_sound: sound {
++		compatible = "simple-audio-card";
++		simple-audio-card,name = "cl-som-imx8";
++		simple-audio-card,widgets =
++			"Headphone", "Headphone Jack",
++			"Line", "Line Out",
++			"Microphone", "Mic Jack",
++			"Line", "Line In";
++		simple-audio-card,routing =
++			"Headphone Jack", "RHPOUT",
++			"Headphone Jack", "LHPOUT",
++			"MICIN", "Mic Bias",
++			"Mic Bias", "Mic Jack";
++		simple-audio-card,format = "i2s";
++		simple-audio-card,bitclock-master = <&sound_master>;
++		simple-audio-card,frame-master = <&sound_master>;
++		simple-audio-card,bitclock-inversion;
++
++		sound_master: simple-audio-card,cpu {
++			sound-dai = <&sai2>;
++			system-clock-frequency = <0>;
++			system-clock-direction = "out";
++		};
++
++		simple-audio-card,codec {
++			sound-dai = <&wm8731>;
++			system-clock-direction = "in";
++			system-clock-type = "mclk";
++		};
++
++	};
++
+ 	sound-hdmi {
+ 		compatible = "fsl,imx-audio-cdnhdmi";
+ 		model = "imx-audio-hdmi";
+@@ -448,6 +480,13 @@
+ 	pinctrl-0 = <&pinctrl_i2c2>;
+ 	status = "okay";
+ 
++	wm8731: wm8731@1a {
++		#sound-dai-cells = <0>;
++		compatible = "wlf,wm8731";
++		reg = <0x1a>;
++		status = "okay";
++	};
++
+ 	eeprom@50 {
+ 		compatible = "at24,24c02";
+ 		reg = <0x50>;
+@@ -596,6 +635,7 @@
+ };
+ 
+ &sai2 {
++	#sound-dai-cells = <0>;
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pinctrl_sai2>;
+ 	assigned-clocks = <&clk IMX8MQ_CLK_SAI2_SRC>,
+-- 
+1.9.1
+

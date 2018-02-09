@@ -1,0 +1,115 @@
+From 7165340044542dfa971a982043b880a04dfe4673 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Sat, 30 Dec 2017 00:58:17 +0200
+Subject: [PATCH 26/54] cl-som-imx8: dts: Add new features from 4.9.51
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 63 ++++++++++++++++++++++++++--
+ 1 file changed, 60 insertions(+), 3 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 4374fc5..ab7877b 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -95,9 +95,22 @@
+ 		compatible = "fsl,imx-audio-cdnhdmi";
+ 		model = "imx-audio-hdmi";
+ 		audio-cpu = <&sai4>;
+-		video-mode = <16>;	/* #16: 1920x1080p@60HZ 16:9 */
+-					/* #95: 3840x2160p@30Hz 16:9 */
+-					/* #97: 3840x2160p@60Hz 16:9 */
++		protocol = <1>;
++	};
++
++	sound-spdif {
++		compatible = "fsl,imx-audio-spdif";
++		model = "imx-spdif";
++		spdif-controller = <&spdif1>;
++		spdif-out;
++		spdif-in;
++	};
++
++	sound-hdmi-arc {
++		compatible = "fsl,imx-audio-spdif";
++		model = "imx-hdmi-arc";
++		spdif-controller = <&spdif2>;
++		spdif-in;
+ 	};
+ 
+ 	pwmleds {
+@@ -342,6 +355,12 @@
+ 			>;
+ 		};
+ 
++		pinctrl_spdif1: spdif1grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_SPDIF_TX_SPDIF1_OUT	0xd6
++				MX8MQ_IOMUXC_SPDIF_RX_SPDIF1_IN		0xd6
++			>;
++		};
+ 	};
+ };
+ 
+@@ -540,6 +559,14 @@
+ 	status = "okay";
+ };
+ 
++&hdmi {
++	status = "okay";
++};
++
++&hdmi_cec {
++	status = "okay";
++};
++
+ #if 0
+ &lcdif {
+ 	status = "disabled";
+@@ -656,6 +683,32 @@
+ 	status = "okay";
+ };
+ 
++&spdif1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_spdif1>;
++	assigned-clocks = <&clk IMX8MQ_CLK_SPDIF1_SRC>,
++			<&clk IMX8MQ_CLK_SPDIF1_DIV>;
++	assigned-clock-parents = <&clk IMX8MQ_AUDIO_PLL1_OUT>;
++	assigned-clock-rates = <0>, <24576000>;
++	status = "okay";
++};
++
++&spdif2 {
++	assigned-clocks = <&clk IMX8MQ_CLK_SPDIF2_SRC>,
++			<&clk IMX8MQ_CLK_SPDIF2_DIV>;
++	assigned-clock-parents = <&clk IMX8MQ_AUDIO_PLL1_OUT>;
++	assigned-clock-rates = <0>, <24576000>;
++	status = "okay";
++};
++
++&gpu_pd {
++	power-supply = <&sw1a_reg>;
++};
++
++&vpu_pd {
++	power-supply = <&sw1c_reg>;
++};
++
+ &gpu {
+ 	status = "okay";
+ };
+@@ -669,6 +722,10 @@
+ 	status = "okay";
+ };
+ 
++&mu {
++	status = "okay";
++};
++
+ &cpu_alert0 {
+ 	temperature = <125000>;
+ };
+-- 
+1.9.1
+

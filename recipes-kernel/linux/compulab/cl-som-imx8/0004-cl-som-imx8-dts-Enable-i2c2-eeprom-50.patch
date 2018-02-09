@@ -1,0 +1,65 @@
+From d8791af3a4a780fc502247423e8915620ae46c5d Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Thu, 9 Nov 2017 15:49:37 +0200
+Subject: [PATCH 04/54] cl-som-imx8: dts: Enable i2c2 eeprom@50
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index bb26da1..3f0ed31 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -316,6 +316,7 @@
+ 	pinctrl-0 = <&pinctrl_i2c1>;
+ 	status = "okay";
+ 
++#if 0
+ 	pmic: pfuze100@08 {
+ 		compatible = "fsl,pfuze100";
+ 		reg = <0x08>;
+@@ -402,7 +403,6 @@
+ 		};
+ 	};
+ 
+-#if 0
+ 	adv7535: adv7535@3d {
+ 		compatible = "adi,adv7535";
+ 		reg = <0x3d>;		/* PD pin is low */
+@@ -417,7 +417,6 @@
+ 			};
+ 		};
+ 	};
+-#endif
+ 
+ 	ptn5110@50 {
+ 		compatible = "usb,tcpci";
+@@ -435,6 +434,7 @@
+ 		port-type = "drp";
+ 		default-role = "sink";
+ 	};
++#endif
+ };
+ 
+ &hdmi {
+@@ -446,7 +446,14 @@
+ 	clock-frequency = <100000>;
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pinctrl_i2c2>;
+-	status = "disabled";
++	status = "okay";
++
++	eeprom@50 {
++		compatible = "at24,24c02";
++		reg = <0x50>;
++		pagesize = <16>;
++	};
++
+ };
+ 
+ #if 0
+-- 
+1.9.1
+

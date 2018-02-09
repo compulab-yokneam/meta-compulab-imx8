@@ -1,0 +1,78 @@
+From 29fe8c47a26cf21c32d539874f7671959d1f3b43 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Tue, 30 Jan 2018 12:38:09 +0200
+Subject: [PATCH 47/54] cl-som-imx8: dts: Enable ECSPI
+
+Enable ECSPI:
+
+1) Add ecspi1 and ecspi3 descriptors.
+2) Add ecspi1 and ecspi3 pingroups.
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 42 ++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 0c4b927..7bcfa08 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -133,6 +133,30 @@
+ 			max-brightness = <255>;
+ 		};
+ 	};
++
++	ecspi1: ecspi@30820000 {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		compatible = "fsl,imx7d-ecspi", "fsl,imx51-ecspi";
++		reg = <0 0x30820000 0 0x10000>;
++		interrupts = <GIC_SPI 31 IRQ_TYPE_LEVEL_HIGH>;
++		clocks = <&clk  IMX8MQ_CLK_ECSPI1_ROOT>,
++			<&clk IMX8MQ_CLK_ECSPI1_ROOT>;
++		clock-names = "ipg", "per";
++		status = "disabled";
++	};
++
++	ecspi3: ecspi@30840000 {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		compatible = "fsl,imx7d-ecspi", "fsl,imx51-ecspi";
++		reg = <0 0x30840000 0 0x10000>;
++		interrupts = <GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>;
++		clocks = <&clk  IMX8MQ_CLK_ECSPI3_ROOT>,
++			<&clk IMX8MQ_CLK_ECSPI3_ROOT>;
++		clock-names = "ipg", "per";
++		status = "disabled";
++	};
+ };
+ 
+ &clk {
+@@ -213,6 +237,24 @@
+ 			>;
+ 		};
+ 
++		pinctrl_ecspi1: ecspi1grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_ECSPI1_SCLK_ECSPI1_SCLK 	0x82
++				MX8MQ_IOMUXC_ECSPI1_MOSI_ECSPI1_MOSI	0x82
++				MX8MQ_IOMUXC_ECSPI1_MISO_ECSPI1_MISO	0x82
++				MX8MQ_IOMUXC_ECSPI1_SS0_GPIO5_IO9	0x82
++			>;
++		};
++
++		pinctrl_ecspi3: ecspi3grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_UART1_RXD_ECSPI3_SCLK	0x82
++				MX8MQ_IOMUXC_UART1_TXD_ECSPI3_MOSI	0x82
++				MX8MQ_IOMUXC_UART2_RXD_ECSPI3_MISO 	0x82
++				MX8MQ_IOMUXC_UART2_TXD_GPIO5_IO25	0x82
++			>;
++		};
++
+ 		pinctrl_dvfs: dvfsgrp {
+ 			fsl,pins = <
+ 				MX8MQ_IOMUXC_GPIO1_IO13_GPIO1_IO13	0x16
+-- 
+1.9.1
+

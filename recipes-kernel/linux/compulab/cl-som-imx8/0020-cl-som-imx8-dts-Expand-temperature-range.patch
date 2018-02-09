@@ -1,0 +1,29 @@
+From 6fb9fcbe2f11b801f48e7597e40da1020bd40a2c Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Thu, 30 Nov 2017 15:57:50 +0200
+Subject: [PATCH 20/54] cl-som-imx8: dts: Expand temperature range
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index e280b2b..8cd4f8d 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -651,3 +651,11 @@
+ 	fsl,ext-reset-output;
+ 	status = "okay";
+ };
++
++&cpu_alert0 {
++	temperature = <125000>;
++};
++
++&cpu_crit0 {
++	temperature = <165000>;
++};
+-- 
+1.9.1
+

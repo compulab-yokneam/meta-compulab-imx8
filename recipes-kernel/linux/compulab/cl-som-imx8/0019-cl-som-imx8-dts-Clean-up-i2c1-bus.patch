@@ -1,0 +1,58 @@
+From 4f5833fb6babf892d498af68681610a4fc0360dd Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Mon, 20 Nov 2017 15:22:42 +0200
+Subject: [PATCH 19/54] cl-som-imx8: dts: Clean up i2c1 bus
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 34 ----------------------------
+ 1 file changed, 34 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 0fd9952..e280b2b 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -363,40 +363,6 @@
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pinctrl_i2c1>;
+ 	status = "okay";
+-
+-#if 0
+-	adv7535: adv7535@3d {
+-		compatible = "adi,adv7535";
+-		reg = <0x3d>;		/* PD pin is low */
+-		/* TODO: pin config & irq */
+-		video-mode = <16>;	/* 1920x1080@60HZ */
+-		dsi-traffic-mode = <0>;
+-		bpp = <24>;
+-		status = "okay";
+-		port {
+-			dsi_to_hdmi: endpoint {
+-				remote-endpoint = <&mipi_dsi_ep>;
+-			};
+-		};
+-	};
+-
+-	ptn5110@50 {
+-		compatible = "usb,tcpci";
+-		pinctrl-names = "default";
+-		pinctrl-0 = <&pinctrl_typec>;
+-		reg = <0x50>;
+-		interrupt-parent = <&gpio3>;
+-		interrupts = <3 8>;
+-		ss-sel-gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;
+-		src-pdos = <0x380190c8>;
+-		snk-pdos = <0x380190c8 0x3802d0c8>;
+-		max-snk-mv = <9000>;
+-		max-snk-ma = <1000>;
+-		op-snk-mw = <9000>;
+-		port-type = "drp";
+-		default-role = "sink";
+-	};
+-#endif
+ };
+ 
+ &hdmi {
+-- 
+1.9.1
+

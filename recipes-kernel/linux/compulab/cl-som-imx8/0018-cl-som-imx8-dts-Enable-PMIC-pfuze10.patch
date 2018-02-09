@@ -1,0 +1,131 @@
+From 59952e0541612279f2f225956387c6b345d50999 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Mon, 20 Nov 2017 15:09:58 +0200
+Subject: [PATCH 18/54] cl-som-imx8: dts: Enable PMIC pfuze10
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 92 ++++++++++++++--------------
+ 1 file changed, 47 insertions(+), 45 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 5081189..0fd9952 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -365,6 +365,51 @@
+ 	status = "okay";
+ 
+ #if 0
++	adv7535: adv7535@3d {
++		compatible = "adi,adv7535";
++		reg = <0x3d>;		/* PD pin is low */
++		/* TODO: pin config & irq */
++		video-mode = <16>;	/* 1920x1080@60HZ */
++		dsi-traffic-mode = <0>;
++		bpp = <24>;
++		status = "okay";
++		port {
++			dsi_to_hdmi: endpoint {
++				remote-endpoint = <&mipi_dsi_ep>;
++			};
++		};
++	};
++
++	ptn5110@50 {
++		compatible = "usb,tcpci";
++		pinctrl-names = "default";
++		pinctrl-0 = <&pinctrl_typec>;
++		reg = <0x50>;
++		interrupt-parent = <&gpio3>;
++		interrupts = <3 8>;
++		ss-sel-gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;
++		src-pdos = <0x380190c8>;
++		snk-pdos = <0x380190c8 0x3802d0c8>;
++		max-snk-mv = <9000>;
++		max-snk-ma = <1000>;
++		op-snk-mw = <9000>;
++		port-type = "drp";
++		default-role = "sink";
++	};
++#endif
++};
++
++&hdmi {
++	disp-dev = "hdmi_disp";
++	status = "okay";
++};
++
++&i2c2 {
++	clock-frequency = <100000>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_i2c2>;
++	status = "okay";
++
+ 	pmic: pfuze100@08 {
+ 		compatible = "fsl,pfuze100";
+ 		reg = <0x08>;
+@@ -451,51 +496,6 @@
+ 		};
+ 	};
+ 
+-	adv7535: adv7535@3d {
+-		compatible = "adi,adv7535";
+-		reg = <0x3d>;		/* PD pin is low */
+-		/* TODO: pin config & irq */
+-		video-mode = <16>;	/* 1920x1080@60HZ */
+-		dsi-traffic-mode = <0>;
+-		bpp = <24>;
+-		status = "okay";
+-		port {
+-			dsi_to_hdmi: endpoint {
+-				remote-endpoint = <&mipi_dsi_ep>;
+-			};
+-		};
+-	};
+-
+-	ptn5110@50 {
+-		compatible = "usb,tcpci";
+-		pinctrl-names = "default";
+-		pinctrl-0 = <&pinctrl_typec>;
+-		reg = <0x50>;
+-		interrupt-parent = <&gpio3>;
+-		interrupts = <3 8>;
+-		ss-sel-gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;
+-		src-pdos = <0x380190c8>;
+-		snk-pdos = <0x380190c8 0x3802d0c8>;
+-		max-snk-mv = <9000>;
+-		max-snk-ma = <1000>;
+-		op-snk-mw = <9000>;
+-		port-type = "drp";
+-		default-role = "sink";
+-	};
+-#endif
+-};
+-
+-&hdmi {
+-	disp-dev = "hdmi_disp";
+-	status = "okay";
+-};
+-
+-&i2c2 {
+-	clock-frequency = <100000>;
+-	pinctrl-names = "default";
+-	pinctrl-0 = <&pinctrl_i2c2>;
+-	status = "okay";
+-
+ 	wm8731: wm8731@1a {
+ 		#sound-dai-cells = <0>;
+ 		compatible = "wlf,wm8731";
+@@ -525,7 +525,9 @@
+ 	reset-gpio = <&gpio5 28 GPIO_ACTIVE_LOW>;
+ 	status = "okay";
+ };
++#endif
+ 
++#if 0
+ &pcie1{
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pinctrl_pcie1>;
+-- 
+1.9.1
+

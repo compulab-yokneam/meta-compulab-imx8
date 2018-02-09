@@ -1,0 +1,26 @@
+From 999f8c6d581507515200510c6f25b375065e0c26 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Thu, 18 Jan 2018 13:40:09 +0200
+Subject: [PATCH 34/54] cl-som-imx8: dts: Change imx-audio-hdmi protocol value
+
+Change imx-audio-hdmi protocol value.
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 03f95a4..5ac65b1 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -94,7 +94,7 @@
+ 		compatible = "fsl,imx-audio-cdnhdmi";
+ 		model = "imx-audio-hdmi";
+ 		audio-cpu = <&sai4>;
+-		protocol = <0>;
++		protocol = <1>;
+ 	};
+ 
+ 	sound-spdif {
+-- 
+1.9.1
+

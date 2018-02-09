@@ -1,0 +1,26 @@
+From 88024df04a35763289d5aed6f5d056b270d1962a Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Wed, 27 Dec 2017 21:24:41 +0200
+Subject: [PATCH 22/54] cl-som-imx8: defconfig: DRM_VIVANTE=y
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/configs/cl-som-imx8_defconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/configs/cl-som-imx8_defconfig b/arch/arm64/configs/cl-som-imx8_defconfig
+index ba1bc46..a5e6c56 100644
+--- a/arch/arm64/configs/cl-som-imx8_defconfig
++++ b/arch/arm64/configs/cl-som-imx8_defconfig
+@@ -348,7 +348,7 @@ CONFIG_V4L_MEM2MEM_DRIVERS=y
+ CONFIG_IMX_DPU_CORE=y
+ CONFIG_DRM=y
+ CONFIG_DRM_NOUVEAU=m
+-CONFIG_DRM_VIVANTE=m
++CONFIG_DRM_VIVANTE=y
+ CONFIG_DRM_MSM=m
+ CONFIG_DRM_TEGRA=m
+ CONFIG_DRM_PANEL_SIMPLE=m
+-- 
+1.9.1
+

@@ -1,0 +1,46 @@
+From 24ed8fc345c29eb37c801ac6d54ba76cbb6c0dc1 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Tue, 14 Nov 2017 07:56:45 +0200
+Subject: [PATCH 13/54] cl-som-imx8: dts: Update pcie1 pin settings
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 199c175..db5de78 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -155,9 +155,12 @@
+ 
+ 		pinctrl_pcie1: pcie1grp {
+ 			fsl,pins = <
+-				MX8MQ_IOMUXC_I2C4_SDA_GPIO5_IO21	0x16
+-				MX8MQ_IOMUXC_ECSPI2_SCLK_GPIO5_IO10	0x16
+-				MX8MQ_IOMUXC_ECSPI2_MISO_GPIO5_IO12	0x16
++				MX8MQ_IOMUXC_GPIO1_IO02_GPIO1_IO2	0x16 /* WIFI clkreq-gpio  pin#39 */
++				MX8MQ_IOMUXC_SAI3_RXC_GPIO4_IO29 	0x16 /* WIFI disable-gpio pin#41 */
++				MX8MQ_IOMUXC_GPIO1_IO01_GPIO1_IO1	0x16 /* WIFI rest-gpio    pin#23 */
++
++				MX8MQ_IOMUXC_GPIO1_IO03_GPIO1_IO3	0x16
++				MX8MQ_IOMUXC_GPIO1_IO00_ANAMIX_REF_CLK_32K 0x16
+ 			>;
+ 		};
+ 
+@@ -508,9 +511,9 @@
+ &pcie1{
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pinctrl_pcie1>;
+-	clkreq-gpio = <&gpio5 21 GPIO_ACTIVE_LOW>;
+-	disable-gpio = <&gpio5 10 GPIO_ACTIVE_LOW>;
+-	reset-gpio = <&gpio5 12 GPIO_ACTIVE_LOW>;
++	clkreq-gpio = <&gpio1 2 GPIO_ACTIVE_LOW>;   /* pin#39 */
++	disable-gpio = <&gpio4 29 GPIO_ACTIVE_LOW>; /* pin#41 */
++	reset-gpio = <&gpio1 1 GPIO_ACTIVE_LOW>;    /* pin#23 */
+ 	status = "okay";
+ };
+ #endif
+-- 
+1.9.1
+

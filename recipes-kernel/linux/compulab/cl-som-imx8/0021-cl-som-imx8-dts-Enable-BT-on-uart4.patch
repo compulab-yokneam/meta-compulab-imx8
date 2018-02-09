@@ -1,0 +1,75 @@
+From 1c05d54407d5fab2e9e6e2d2d3d23de477da5a3e Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Tue, 12 Dec 2017 19:54:17 +0200
+Subject: [PATCH 21/54] cl-som-imx8: dts: Enable BT on uart4
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 23 ++++++++++++++++++++---
+ 1 file changed, 20 insertions(+), 3 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 8cd4f8d..4374fc5 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -229,6 +229,17 @@
+ 			>;
+ 		};
+ 
++		pinctrl_uart4: uart4grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_ECSPI2_MOSI_UART4_DCE_TX		0x79
++				MX8MQ_IOMUXC_ECSPI2_SCLK_UART4_DCE_RX		0x79
++				MX8MQ_IOMUXC_ECSPI2_MISO_UART4_DCE_CTS_B	0x79
++				MX8MQ_IOMUXC_ECSPI2_SS0_UART4_DCE_RTS_B		0x79
++				MX8MQ_IOMUXC_GPIO1_IO04_GPIO1_IO4		0x19
++				MX8MQ_IOMUXC_GPIO1_IO05_GPIO1_IO5		0x19
++			>;
++		};
++
+ 		pinctrl_usdhc1: usdhc1grp {
+ 			fsl,pins = <
+ 				MX8MQ_IOMUXC_SD1_CLK_USDHC1_CLK			0x83
+@@ -296,7 +307,6 @@
+ 				MX8MQ_IOMUXC_SD2_DATA1_USDHC2_DATA1		0xc3
+ 				MX8MQ_IOMUXC_SD2_DATA2_USDHC2_DATA2		0xc3
+ 				MX8MQ_IOMUXC_SD2_DATA3_USDHC2_DATA3		0xc3
+-				MX8MQ_IOMUXC_GPIO1_IO04_USDHC2_VSELECT		0xc1
+ 			>;
+ 		};
+ 
+@@ -308,7 +318,6 @@
+ 				MX8MQ_IOMUXC_SD2_DATA1_USDHC2_DATA1		0xc5
+ 				MX8MQ_IOMUXC_SD2_DATA2_USDHC2_DATA2		0xc5
+ 				MX8MQ_IOMUXC_SD2_DATA3_USDHC2_DATA3		0xc5
+-				MX8MQ_IOMUXC_GPIO1_IO04_USDHC2_VSELECT		0xc1
+ 			>;
+ 		};
+ 
+@@ -320,7 +329,6 @@
+ 				MX8MQ_IOMUXC_SD2_DATA1_USDHC2_DATA1		0xc7
+ 				MX8MQ_IOMUXC_SD2_DATA2_USDHC2_DATA2		0xc7
+ 				MX8MQ_IOMUXC_SD2_DATA3_USDHC2_DATA3		0xc7
+-				MX8MQ_IOMUXC_GPIO1_IO04_USDHC2_VSELECT		0xc1
+ 			>;
+ 		};
+ 
+@@ -518,6 +526,15 @@
+ 	status = "okay";
+ };
+ 
++&uart4 { /* BT */
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_uart4>;
++	assigned-clocks = <&clk IMX8MQ_CLK_UART4_SRC>;
++	assigned-clock-parents = <&clk IMX8MQ_SYS1_PLL_80M>;
++	fsl,uart-has-rtscts;
++	status = "okay";
++};
++
+ &dcss {
+ 	disp-dev = "hdmi_disp";
+ 	status = "okay";
+-- 
+1.9.1
+
