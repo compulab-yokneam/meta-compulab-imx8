@@ -1,0 +1,48 @@
+From de7cee2f3e654cf8757c0b0db37d1bd84150ed56 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Sun, 31 Dec 2017 12:36:13 +0200
+Subject: [PATCH 01/11] arm: imx8: cl-som-imx8: 01: add initial board support
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm/cpu/armv8/imx8m/Kconfig | 7 ++++++-
+ arch/arm/dts/Makefile            | 1 +
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/cpu/armv8/imx8m/Kconfig b/arch/arm/cpu/armv8/imx8m/Kconfig
+index 1764ec6..8f2c8ea 100644
+--- a/arch/arm/cpu/armv8/imx8m/Kconfig
++++ b/arch/arm/cpu/armv8/imx8m/Kconfig
+@@ -12,11 +12,16 @@ config TARGET_IMX8MQ_EVK
+ 	select IMX8M
+ 	select SUPPORT_SPL
+ 
++config TARGET_CL_SOM_IMX8
++	bool "cl-som-imx8"
++	select IMX8M
++	select SUPPORT_SPL
++
+ endchoice
+ 
+ config SYS_SOC
+ 	default "imx8m"
+ 
+ source "board/freescale/imx8mq_evk/Kconfig"
+-
++source "board/compulab/cl-som-imx8/Kconfig"
+ endif
+diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
+index 54c3dfc..5a148ea 100644
+--- a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -387,6 +387,7 @@ dtb-$(CONFIG_ARCH_MX7ULP) += imx7ulp-evk.dtb \
+ 		imx7ulp-14x14-arm2.dtb
+ 
+ dtb-$(CONFIG_ARCH_IMX8M) += fsl-imx8mq-evk.dtb
++dtb-$(CONFIG_TARGET_CL_SOM_IMX8) += cl-som-imx8.dtb
+ 
+ dtb-$(CONFIG_ARCH_IMX8) += fsl-imx8qm-lpddr4-arm2.dtb \
+ 		fsl-imx8qm-mek.dtb \
+-- 
+1.9.1
+

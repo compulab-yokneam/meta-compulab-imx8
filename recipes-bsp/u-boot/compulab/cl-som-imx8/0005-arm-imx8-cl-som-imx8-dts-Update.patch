@@ -1,0 +1,476 @@
+From 0cf9401423b729e414b10b276037e83f640126aa Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Sun, 7 Jan 2018 14:36:40 +0200
+Subject: [PATCH 05/11] arm: imx8: cl-som-imx8: dts: Update
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm/dts/cl-som-imx8.dts | 287 ++++++++++++++++++++++++-------------------
+ 1 file changed, 160 insertions(+), 127 deletions(-)
+
+diff --git a/arch/arm/dts/cl-som-imx8.dts b/arch/arm/dts/cl-som-imx8.dts
+index 441bd90..e2dccec 100644
+--- a/arch/arm/dts/cl-som-imx8.dts
++++ b/arch/arm/dts/cl-som-imx8.dts
+@@ -1,6 +1,5 @@
+ /*
+- * Copyright (C) 2016 Freescale Semiconductor, Inc.
+- * Copyright 2017 NXP
++ * Copyright (C) 2017 CopuLab Ltd.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU General Public License
+@@ -35,6 +34,15 @@
+ 		stdout-path = &uart3;
+ 	};
+ 
++	leds {
++		compatible = "gpio-leds";
++		heartbeat-led {
++			label = "Heartbeat";
++			gpios = <&gpio1 12 0>;
++			linux,default-trigger = "heartbeat";
++		};
++	};
++
+ 	regulators {
+ 		compatible = "simple-bus";
+ 		#address-cells = <1>;
+@@ -50,29 +58,59 @@
+ 		};
+ 	};
+ 
+-	modem_reset: modem-reset {
+-		compatible = "gpio-reset";
+-		reset-gpios = <&gpio3 5 GPIO_ACTIVE_LOW>;
+-		reset-delay-us = <2000>;
+-		reset-post-delay-ms = <40>;
+-		#reset-cells = <0>;
++	simple_sound: sound {
++		compatible = "simple-audio-card";
++		simple-audio-card,name = "cl-som-imx8";
++		simple-audio-card,widgets =
++			"Headphone", "Headphone Jack",
++			"Line", "Line Out",
++			"Microphone", "Mic Jack",
++			"Line", "Line In";
++		simple-audio-card,routing =
++			"Headphone Jack", "RHPOUT",
++			"Headphone Jack", "LHPOUT",
++			"MICIN", "Mic Bias",
++			"Mic Bias", "Mic Jack";
++		simple-audio-card,format = "i2s";
++		simple-audio-card,bitclock-master = <&sound_master>;
++		simple-audio-card,frame-master = <&sound_master>;
++		simple-audio-card,bitclock-inversion;
++
++		sound_master: simple-audio-card,cpu {
++			sound-dai = <&sai2>;
++			system-clock-frequency = <0>;
++			system-clock-direction = "out";
++		};
++
++		simple-audio-card,codec {
++			sound-dai = <&wm8731>;
++			system-clock-direction = "in";
++			system-clock-type = "mclk";
++		};
++
++	};
++
++	sound-hdmi {
++		compatible = "fsl,imx-audio-cdnhdmi";
++		model = "imx-audio-hdmi";
++		audio-cpu = <&sai4>;
++		protocol = <0>;
+ 	};
+ 
+-	wm8524: wm8524 {
+-		compatible = "wlf,wm8524";
+-		clocks = <&clk IMX8MQ_CLK_SAI2_ROOT>;
+-		clock-names = "mclk";
+-		wlf,mute-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
++	sound-spdif {
++		compatible = "fsl,imx-audio-spdif";
++		model = "imx-spdif";
++		spdif-controller = <&spdif1>;
++		spdif-out;
++		spdif-in;
+ 	};
+ 
+-	sound-wm8524 {
+-		compatible = "fsl,imx-audio-wm8524";
+-		model = "wm8524-audio";
+-		audio-cpu = <&sai2>;
+-		audio-codec = <&wm8524>;
+-		audio-routing =
+-			"Line Out Jack", "LINEVOUTL",
+-			"Line Out Jack", "LINEVOUTR";
++	sound-hdmi-arc {
++		compatible = "fsl,imx-audio-spdif";
++		model = "imx-hdmi-arc";
++		spdif-controller = <&spdif2>;
++		spdif-in;
++		status = "disabled";
+ 	};
+ 
+ 	pwmleds {
+@@ -86,10 +124,22 @@
+ 	};
+ };
+ 
++&clk {
++	assigned-clocks = <&clk IMX8MQ_AUDIO_PLL1>;
++	assigned-clock-rates = <786432000>;
++};
++
+ &iomuxc {
+ 	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_hog>;
++
++	cl-som-imx8 {
++		pinctrl_hog: hoggrp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_GPIO1_IO12_GPIO1_IO12	0x16
++			>;
++		};
+ 
+-	imx8mq-evk {
+ 		pinctrl_fec1: fec1grp {
+ 			fsl,pins = <
+ 				MX8MQ_IOMUXC_ENET_MDC_ENET1_MDC		0x3
+@@ -135,9 +185,12 @@
+ 
+ 		pinctrl_pcie1: pcie1grp {
+ 			fsl,pins = <
+-				MX8MQ_IOMUXC_I2C4_SDA_GPIO5_IO21	0x16
+-				MX8MQ_IOMUXC_ECSPI2_SCLK_GPIO5_IO10	0x16
+-				MX8MQ_IOMUXC_ECSPI2_MISO_GPIO5_IO12	0x16
++				MX8MQ_IOMUXC_GPIO1_IO02_GPIO1_IO2	0x16 /* WIFI clkreq-gpio  pin#39 */
++				MX8MQ_IOMUXC_SAI3_RXC_GPIO4_IO29 	0x16 /* WIFI disable-gpio pin#41 */
++				MX8MQ_IOMUXC_GPIO1_IO01_GPIO1_IO1	0x16 /* WIFI rest-gpio    pin#23 */
++
++				MX8MQ_IOMUXC_GPIO1_IO03_GPIO1_IO3	0x16
++				MX8MQ_IOMUXC_GPIO1_IO00_ANAMIX_REF_CLK_32K 0x16
+ 			>;
+ 		};
+ 
+@@ -147,15 +200,16 @@
+ 			>;
+ 		};
+ 
+-		pinctrl_qspi: qspigrp {
++		pinctrl_dvfs: dvfsgrp {
+ 			fsl,pins = <
+-				MX8MQ_IOMUXC_NAND_ALE_QSPI_A_SCLK	0x82
+-				MX8MQ_IOMUXC_NAND_CE0_B_QSPI_A_SS0_B	0x82
+-				MX8MQ_IOMUXC_NAND_DATA00_QSPI_A_DATA0	0x82
+-				MX8MQ_IOMUXC_NAND_DATA01_QSPI_A_DATA1	0x82
+-				MX8MQ_IOMUXC_NAND_DATA02_QSPI_A_DATA2	0x82
+-				MX8MQ_IOMUXC_NAND_DATA03_QSPI_A_DATA3	0x82
++				MX8MQ_IOMUXC_GPIO1_IO13_GPIO1_IO13	0x16
++			>;
++		};
+ 
++		pinctrl_typec: typecgrp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_NAND_RE_B_GPIO3_IO15	0x16
++				MX8MQ_IOMUXC_NAND_CE2_B_GPIO3_IO3	0x17059
+ 			>;
+ 		};
+ 
+@@ -176,6 +230,17 @@
+ 			>;
+ 		};
+ 
++		pinctrl_uart4: uart4grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_ECSPI2_MOSI_UART4_DCE_TX		0x79
++				MX8MQ_IOMUXC_ECSPI2_SCLK_UART4_DCE_RX		0x79
++				MX8MQ_IOMUXC_ECSPI2_MISO_UART4_DCE_CTS_B	0x79
++				MX8MQ_IOMUXC_ECSPI2_SS0_UART4_DCE_RTS_B		0x79
++				MX8MQ_IOMUXC_GPIO1_IO04_GPIO1_IO4		0x19
++				MX8MQ_IOMUXC_GPIO1_IO05_GPIO1_IO5		0x19
++			>;
++		};
++
+ 		pinctrl_usdhc1: usdhc1grp {
+ 			fsl,pins = <
+ 				MX8MQ_IOMUXC_SD1_CLK_USDHC1_CLK			0x83
+@@ -229,6 +294,7 @@
+ 
+ 		pinctrl_usdhc2_gpio: usdhc2grpgpio {
+ 			fsl,pins = <
++				MX8MQ_IOMUXC_SD2_WP_GPIO2_IO20		0x41
+ 				MX8MQ_IOMUXC_SD2_CD_B_GPIO2_IO12	0x41
+ 				MX8MQ_IOMUXC_SD2_RESET_B_GPIO2_IO19	0x41
+ 			>;
+@@ -242,7 +308,6 @@
+ 				MX8MQ_IOMUXC_SD2_DATA1_USDHC2_DATA1		0xc3
+ 				MX8MQ_IOMUXC_SD2_DATA2_USDHC2_DATA2		0xc3
+ 				MX8MQ_IOMUXC_SD2_DATA3_USDHC2_DATA3		0xc3
+-				MX8MQ_IOMUXC_GPIO1_IO04_USDHC2_VSELECT		0xc1
+ 			>;
+ 		};
+ 
+@@ -254,7 +319,6 @@
+ 				MX8MQ_IOMUXC_SD2_DATA1_USDHC2_DATA1		0xc5
+ 				MX8MQ_IOMUXC_SD2_DATA2_USDHC2_DATA2		0xc5
+ 				MX8MQ_IOMUXC_SD2_DATA3_USDHC2_DATA3		0xc5
+-				MX8MQ_IOMUXC_GPIO1_IO04_USDHC2_VSELECT		0xc1
+ 			>;
+ 		};
+ 
+@@ -266,7 +330,6 @@
+ 				MX8MQ_IOMUXC_SD2_DATA1_USDHC2_DATA1		0xc7
+ 				MX8MQ_IOMUXC_SD2_DATA2_USDHC2_DATA2		0xc7
+ 				MX8MQ_IOMUXC_SD2_DATA3_USDHC2_DATA3		0xc7
+-				MX8MQ_IOMUXC_GPIO1_IO04_USDHC2_VSELECT		0xc1
+ 			>;
+ 		};
+ 
+@@ -280,9 +343,10 @@
+ 			>;
+ 		};
+ 
+-		pinctrl_wdog: wdoggrp {
++		pinctrl_spdif1: spdif1grp {
+ 			fsl,pins = <
+-				MX8MQ_IOMUXC_GPIO1_IO02_WDOG1_WDOG_B 0xc6
++				MX8MQ_IOMUXC_SPDIF_TX_SPDIF1_OUT	0xd6
++				MX8MQ_IOMUXC_SPDIF_RX_SPDIF1_IN		0xd6
+ 			>;
+ 		};
+ 	};
+@@ -314,6 +378,13 @@
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pinctrl_i2c1>;
+ 	status = "okay";
++};
++
++&i2c2 {
++	clock-frequency = <100000>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_i2c2>;
++	status = "okay";
+ 
+ 	pmic: pfuze100@08 {
+ 		compatible = "fsl,pfuze100";
+@@ -401,29 +472,27 @@
+ 		};
+ 	};
+ 
+-	adv7535: adv7535@3d {
+-		compatible = "adi,adv7535";
+-		reg = <0x3d>;		/* PD pin is low */
+-		/* TODO: pin config & irq */
+-		video-mode = <34>;	/* 1920x1080@30HZ */
+-		dsi-traffic-mode = <0>;
+-		bpp = <24>;
++	wm8731: wm8731@1a {
++		#sound-dai-cells = <0>;
++		compatible = "wlf,wm8731";
++		reg = <0x1a>;
+ 		status = "okay";
+-		port {
+-			dsi_to_hdmi: endpoint {
+-				remote-endpoint = <&mipi_dsi_ep>;
+-			};
+-		};
+ 	};
+-};
+ 
+-&i2c2 {
+-	clock-frequency = <100000>;
+-	pinctrl-names = "default";
+-	pinctrl-0 = <&pinctrl_i2c2>;
+-	status = "disabled";
++	eeprom@50 {
++		compatible = "at24,24c02";
++		reg = <0x50>;
++		pagesize = <16>;
++	};
++
++	rtc@56 {
++		compatible = "emmicro,em3027";
++		reg = <0x56>;
++	};
++
+ };
+ 
++#if 0
+ &pcie0{
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pinctrl_pcie0>;
+@@ -432,13 +501,16 @@
+ 	reset-gpio = <&gpio5 28 GPIO_ACTIVE_LOW>;
+ 	status = "okay";
+ };
++#endif
+ 
+ &pcie1{
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pinctrl_pcie1>;
+-	clkreq-gpio = <&gpio5 21 GPIO_ACTIVE_LOW>;
+-	disable-gpio = <&gpio5 10 GPIO_ACTIVE_LOW>;
+-	reset-gpio = <&gpio5 12 GPIO_ACTIVE_LOW>;
++	clkreq-gpio = <&gpio1 2 GPIO_ACTIVE_LOW>;   /* pin#39 */
++	disable-gpio = <&gpio4 29 GPIO_ACTIVE_LOW>; /* pin#41 */
++	reset-gpio = <&gpio1 1 GPIO_ACTIVE_LOW>;    /* pin#23 */
++	ext_osc = <0>;
++	hard-wired = <1>;
+ 	status = "okay";
+ };
+ 
+@@ -456,74 +528,14 @@
+ 	status = "okay";
+ };
+ 
+-&lcdif {
+-	status = "okay";
+-	disp-dev = "mipi_dsi_northwest";
+-	display = <&display0>;
+-
+-	display0: display@0 {
+-		bits-per-pixel = <24>;
+-		bus-width = <24>;
+-
+-		display-timings {
+-			native-mode = <&timing0>;
+-			timing0: timing0 {
+-			clock-frequency = <9200000>;
+-			hactive = <480>;
+-			vactive = <272>;
+-			hfront-porch = <8>;
+-			hback-porch = <4>;
+-			hsync-len = <41>;
+-			vback-porch = <2>;
+-			vfront-porch = <4>;
+-			vsync-len = <10>;
+-
+-			hsync-active = <0>;
+-			vsync-active = <0>;
+-			de-active = <1>;
+-			pixelclk-active = <0>;
+-			};
+-		};
+-	};
+-};
+-
+-&qspi {
++&uart4 { /* BT */
+ 	pinctrl-names = "default";
+-	pinctrl-0 = <&pinctrl_qspi>;
+-	status = "okay";
+-
+-	flash0: n25q256a@0 {
+-		reg = <0>;
+-		#address-cells = <1>;
+-		#size-cells = <1>;
+-		compatible = "micron,n25q256a";
+-		spi-max-frequency = <29000000>;
+-		spi-nor,ddr-quad-read-dummy = <6>;
+-	};
+-};
+-
+-&mipi_dsi {
+-	reset = <&src>;
+-	mux-sel = <&gpr>;	/* lcdif or dcss */
+-	status = "okay";
+-	port {
+-		mipi_dsi_ep: endpoint {
+-			remote-endpoint = <&dsi_to_hdmi>;
+-		};
+-	};
+-};
+-
+-#if 0
+-&uart3 { /* BT */
+-	pinctrl-names = "default";
+-	pinctrl-0 = <&pinctrl_uart3>;
+-	assigned-clocks = <&clk IMX8MQ_CLK_UART3_SRC>;
++	pinctrl-0 = <&pinctrl_uart4>;
++	assigned-clocks = <&clk IMX8MQ_CLK_UART4_SRC>;
+ 	assigned-clock-parents = <&clk IMX8MQ_SYS1_PLL_80M>;
+ 	fsl,uart-has-rtscts;
+-	resets = <&modem_reset>;
+ 	status = "okay";
+ };
+-#endif
+ 
+ &usdhc1 {
+ 	pinctrl-names = "default", "state_100mhz", "state_200mhz";
+@@ -542,7 +554,9 @@
+ 	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_usdhc2_gpio>;
+ 	bus-width = <4>;
+ 	cd-gpios = <&gpio2 12 GPIO_ACTIVE_LOW>;
++	wp-gpios = <&gpio2 20 GPIO_ACTIVE_HIGH>;
+ 	vmmc-supply = <&reg_usdhc2_vmmc>;
++	no-1-8-v;
+ 	status = "okay";
+ };
+ 
+@@ -556,7 +570,7 @@
+ 
+ &usb_dwc3_0 {
+ 	status = "okay";
+-	dr_mode = "peripheral";
++	dr_mode = "host";
+ };
+ 
+ &usb3_phy1 {
+@@ -573,14 +587,31 @@
+ };
+ 
+ &sai2 {
++	#sound-dai-cells = <0>;
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pinctrl_sai2>;
+ 	assigned-clocks = <&clk IMX8MQ_CLK_SAI2_SRC>,
+-			<&clk IMX8MQ_AUDIO_PLL1>,
+-			<&clk IMX8MQ_CLK_SAI2_PRE_DIV>,
+ 			<&clk IMX8MQ_CLK_SAI2_DIV>;
+ 	assigned-clock-parents = <&clk IMX8MQ_AUDIO_PLL1_OUT>;
+-	assigned-clock-rates = <0>, <786432000>, <98306000>, <24576000>;
++	assigned-clock-rates = <0>, <24576000>;
++	status = "okay";
++};
++
++&sai4 {
++	assigned-clocks = <&clk IMX8MQ_CLK_SAI4_SRC>,
++			<&clk IMX8MQ_CLK_SAI4_DIV>;
++	assigned-clock-parents = <&clk IMX8MQ_AUDIO_PLL1_OUT>;
++	assigned-clock-rates = <0>, <24576000>;
++	status = "okay";
++};
++
++&spdif1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_spdif1>;
++	assigned-clocks = <&clk IMX8MQ_CLK_SPDIF1_SRC>,
++			<&clk IMX8MQ_CLK_SPDIF1_DIV>;
++	assigned-clock-parents = <&clk IMX8MQ_AUDIO_PLL1_OUT>;
++	assigned-clock-rates = <0>, <24576000>;
+ 	status = "okay";
+ };
+ 
+@@ -593,12 +624,14 @@
+ };
+ 
+ &wdog1 {
+-	pinctrl-names = "default";
+-	pinctrl-0 = <&pinctrl_wdog>;
+ 	fsl,ext-reset-output;
+ 	status = "okay";
+ };
+ 
++&mu {
++	status = "okay";
++};
++
+ &cpu_alert0 {
+ 	temperature = <125000>;
+ };
+-- 
+1.9.1
+

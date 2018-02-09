@@ -1,0 +1,38 @@
+From f521817d86c74f10479564c8ab867e562a843912 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Sun, 21 Jan 2018 10:49:59 +0200
+Subject: [PATCH 06/11] arm: imx8: cl-som-imx8: spl: Add
+ board_fit_config_name_match()
+
+Add  board_fit_config_name_match() in order to allow
+config FIT.
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ board/compulab/cl-som-imx8/spl.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/board/compulab/cl-som-imx8/spl.c b/board/compulab/cl-som-imx8/spl.c
+index 6ce877f..5b9f269 100644
+--- a/board/compulab/cl-som-imx8/spl.c
++++ b/board/compulab/cl-som-imx8/spl.c
+@@ -203,6 +203,16 @@ void spl_board_init(void)
+ 	puts("Normal Boot\n");
+ }
+ 
++#ifdef CONFIG_SPL_LOAD_FIT
++int board_fit_config_name_match(const char *name)
++{
++	/* Just empty function now - can't decide what to choose */
++	debug("%s: %s\n", __func__, name);
++
++	return 0;
++}
++#endif
++
+ void board_init_f(ulong dummy)
+ {
+ 	/* Clear global data */
+-- 
+1.9.1
+

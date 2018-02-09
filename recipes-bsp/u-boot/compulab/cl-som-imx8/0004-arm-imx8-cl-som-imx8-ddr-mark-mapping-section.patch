@@ -1,0 +1,53 @@
+From 569fc2e162dbf1343796a31c48de95cd653994f1 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Thu, 4 Jan 2018 07:56:42 +0200
+Subject: [PATCH 04/11] arm: imx8: cl-som-imx8: ddr: mark mapping section
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ board/compulab/cl-som-imx8/ddr/ddr_init.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/board/compulab/cl-som-imx8/ddr/ddr_init.c b/board/compulab/cl-som-imx8/ddr/ddr_init.c
+index 10cca6e..eb2bd2e 100644
+--- a/board/compulab/cl-som-imx8/ddr/ddr_init.c
++++ b/board/compulab/cl-som-imx8/ddr/ddr_init.c
+@@ -105,6 +105,8 @@ void ddr_init(void)
+ 	reg32_write(0x3d400320,0x0);
+ 	reg32_write(0x3d000000,0x1);
+ 	reg32_write(0x3d4001b0,0x10);
++
++	/* die # 0 map 0-7 */
+ 	reg32_write(0x3c040280,0x0);
+ 	reg32_write(0x3c040284,0x1);
+ 	reg32_write(0x3c040288,0x2);
+@@ -113,6 +115,8 @@ void ddr_init(void)
+ 	reg32_write(0x3c040294,0x5);
+ 	reg32_write(0x3c040298,0x6);
+ 	reg32_write(0x3c04029c,0x7);
++
++	/* die # 0 map 8-15 */
+ 	reg32_write(0x3c044280,0x2);
+ 	reg32_write(0x3c044284,0x6);
+ 	reg32_write(0x3c044288,0x4);
+@@ -121,6 +125,8 @@ void ddr_init(void)
+ 	reg32_write(0x3c044294,0x3);
+ 	reg32_write(0x3c044298,0x0);
+ 	reg32_write(0x3c04429c,0x1);
++
++	/* die # 1 map 0-7 */
+ 	reg32_write(0x3c048280,0x0);
+ 	reg32_write(0x3c048284,0x1);
+ 	reg32_write(0x3c048288,0x2);
+@@ -129,6 +135,8 @@ void ddr_init(void)
+ 	reg32_write(0x3c048294,0x5);
+ 	reg32_write(0x3c048298,0x6);
+ 	reg32_write(0x3c04829c,0x7);
++
++	/* die # 1 map 8-15 */
+ 	reg32_write(0x3c04c280,0x1);
+ 	reg32_write(0x3c04c284,0x3);
+ 	reg32_write(0x3c04c288,0x4);
+-- 
+1.9.1
+

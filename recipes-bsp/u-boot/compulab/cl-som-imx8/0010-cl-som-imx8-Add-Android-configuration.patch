@@ -1,0 +1,129 @@
+From 2005612011e51523c4e79bb8e3750af875c3455d Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Fri, 26 Jan 2018 18:13:08 +0200
+Subject: [PATCH 10/11] cl-som-imx8: Add Android configuration
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ configs/cl-som-imx8_android_defconfig | 35 +++++++++++++++++++++++
+ include/configs/cl-som-imx8.h         |  4 +++
+ include/configs/cl-som-imx8_android.h | 52 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 91 insertions(+)
+ create mode 100644 configs/cl-som-imx8_android_defconfig
+ create mode 100644 include/configs/cl-som-imx8_android.h
+
+diff --git a/configs/cl-som-imx8_android_defconfig b/configs/cl-som-imx8_android_defconfig
+new file mode 100644
+index 0000000..38b446b
+--- /dev/null
++++ b/configs/cl-som-imx8_android_defconfig
+@@ -0,0 +1,35 @@
++CONFIG_ARM=y
++CONFIG_ARCH_IMX8M=y
++CONFIG_SYS_MALLOC_F_LEN=0x2000
++CONFIG_TARGET_CL_SOM_IMX8=y
++CONFIG_DEFAULT_DEVICE_TREE="cl-som-imx8"
++CONFIG_FIT=y
++CONFIG_SPL_LOAD_FIT=y
++CONFIG_SYS_EXTRA_OPTIONS="IMX_CONFIG=arch/arm/imx-common/spl_sd.cfg,ANDROID_SUPPORT"
++CONFIG_EFI_PARTITION=y
++CONFIG_SPL=y
++CONFIG_HUSH_PARSER=y
++CONFIG_CMD_I2C=y
++CONFIG_CMD_GPIO=y
++CONFIG_CMD_CACHE=y
++CONFIG_CMD_PMIC=y
++CONFIG_CMD_REGULATOR=y
++CONFIG_CMD_FS_GENERIC=y
++CONFIG_OF_CONTROL=y
++# CONFIG_BLK is not set
++CONFIG_DM_GPIO=y
++CONFIG_DM_I2C=y
++CONFIG_SYS_I2C_MXC=y
++CONFIG_DM_MMC=y
++# CONFIG_DM_MMC_OPS is not set
++CONFIG_DM_ETH=y
++CONFIG_PINCTRL=y
++CONFIG_PINCTRL_IMX8M=y
++CONFIG_DM_PMIC=y
++CONFIG_DM_PMIC_PFUZE100=y
++CONFIG_DM_REGULATOR=y
++CONFIG_DM_REGULATOR_PFUZE100=y
++CONFIG_DM_REGULATOR_FIXED=y
++CONFIG_DM_REGULATOR_GPIO=y
++CONFIG_DM_THERMAL=y
++CONFIG_NXP_TMU=y
+diff --git a/include/configs/cl-som-imx8.h b/include/configs/cl-som-imx8.h
+index 8aade36..02475cc 100644
+--- a/include/configs/cl-som-imx8.h
++++ b/include/configs/cl-som-imx8.h
+@@ -305,4 +305,8 @@
+ 
+ #define CONFIG_OF_SYSTEM_SETUP
+ 
++#if defined(CONFIG_ANDROID_SUPPORT)
++#include "cl-som-imx8_android.h"
++#endif
++
+ #endif
+diff --git a/include/configs/cl-som-imx8_android.h b/include/configs/cl-som-imx8_android.h
+new file mode 100644
+index 0000000..2c27993
+--- /dev/null
++++ b/include/configs/cl-som-imx8_android.h
+@@ -0,0 +1,52 @@
++/*
++ * opyright 2017 NXP
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#ifndef __CL_SOM_IMX8_ANDROID_H
++#define __CL_SOM_IMX8_ANDROID_H
++
++#define CONFIG_BOOTLOADER_OFFSET_33K
++#define CONFIG_BCB_SUPPORT
++#define CONFIG_CMD_READ
++
++#define CONFIG_ANDROID_AB_SUPPORT
++#define CONFIG_AVB_SUPPORT
++#define CONFIG_SUPPORT_EMMC_RPMB
++#define CONFIG_SYSTEM_RAMDISK_SUPPORT
++#define CONFIG_AVB_FUSE_BANK_SIZEW 0
++#define CONFIG_AVB_FUSE_BANK_START 0
++#define CONFIG_AVB_FUSE_BANK_END 0
++#define CONFIG_FASTBOOT_LOCK
++#define FSL_FASTBOOT_FB_DEV "mmc"
++
++#ifdef CONFIG_SYS_MALLOC_LEN
++#undef CONFIG_SYS_MALLOC_LEN
++#define CONFIG_SYS_MALLOC_LEN           (64 * SZ_1M)
++#endif
++
++#define CONFIG_USB_FUNCTION_FASTBOOT
++#define CONFIG_CMD_FASTBOOT
++#define CONFIG_ANDROID_BOOT_IMAGE
++#define CONFIG_FASTBOOT_FLASH
++#define CONFIG_FASTBOOT_STORAGE_MMC
++
++#define CONFIG_FSL_FASTBOOT
++#define CONFIG_ANDROID_RECOVERY
++
++#define CONFIG_FASTBOOT_BUF_ADDR   CONFIG_SYS_LOAD_ADDR
++#define CONFIG_FASTBOOT_BUF_SIZE   0x19000000
++
++#define CONFIG_CMD_BOOTA
++#define CONFIG_SUPPORT_RAW_INITRD
++
++#undef CONFIG_EXTRA_ENV_SETTINGS
++#undef CONFIG_BOOTCOMMAND
++
++#define CONFIG_EXTRA_ENV_SETTINGS		\
++	"splashpos=m,m\0"			\
++	"fdt_high=0xffffffffffffffff\0"		\
++	"initrd_high=0xffffffffffffffff\0"	\
++
++#endif /* __CL_SOM_IMX8_ANDROID_H */
+-- 
+1.9.1
+
