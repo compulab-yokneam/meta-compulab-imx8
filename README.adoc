@@ -1,1 +1,1 @@
-# meta-compulab-imx8
+# https://github.com/compulab-yokneam/meta-compulab-imx8/wiki[meta-compulab-imx8 wiki]
