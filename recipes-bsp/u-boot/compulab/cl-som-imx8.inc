@@ -11,5 +11,10 @@ SRC_URI_append_cl-som-imx8 = " \
 	file://0009-cl-som-imx8-Set-MODE_HOST-for-the-USB1.patch \
 	file://0010-cl-som-imx8-Add-Android-configuration.patch \
 	file://0011-cl-som-imx8-Define-the-platform-reset-function.patch \
+	file://0012-cl-som-imx8-move-i2c-pad-controlls-to-common.h.patch \
+	file://0013-cl-som-imx8-config-i2c-bus-0.patch \
+	file://0014-cl-som-imx8-Add-eeprom-support.patch \
+	file://0015-cl-som-imx8-Read-FEC-mac-address-from-eeprom.patch \
+	file://0016-cl-som-imx8-config-Disable-CONFIG_NXP_TMU.patch \
 	file://cl-som-imx8_defconfig \
 "

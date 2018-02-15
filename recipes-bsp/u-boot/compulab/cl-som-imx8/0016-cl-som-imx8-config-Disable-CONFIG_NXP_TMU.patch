@@ -1,0 +1,22 @@
+From 9ec4958b591b6a80fb450a01633c70616a1b984c Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Thu, 15 Feb 2018 13:41:24 +0200
+Subject: [PATCH 16/16] cl-som-imx8: config: Disable CONFIG_NXP_TMU
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ configs/cl-som-imx8_defconfig | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/configs/cl-som-imx8_defconfig b/configs/cl-som-imx8_defconfig
+index bbf5afe..32b81a9 100644
+--- a/configs/cl-som-imx8_defconfig
++++ b/configs/cl-som-imx8_defconfig
+@@ -31,4 +31,3 @@ CONFIG_DM_REGULATOR_PFUZE100=y
+ CONFIG_DM_REGULATOR_FIXED=y
+ CONFIG_DM_REGULATOR_GPIO=y
+ CONFIG_DM_THERMAL=y
+-CONFIG_NXP_TMU=y
+-- 
+1.9.1
+

@@ -1,0 +1,79 @@
+From ee7089966d6752314f6124f41a91f23989693397 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Thu, 15 Feb 2018 10:43:35 +0200
+Subject: [PATCH 15/16] cl-som-imx8: Read FEC mac address from eeprom
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ board/compulab/cl-som-imx8/cl-som-imx8.c | 34 ++++++++++++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
+
+diff --git a/board/compulab/cl-som-imx8/cl-som-imx8.c b/board/compulab/cl-som-imx8/cl-som-imx8.c
+index 3beb55d..ea2cd57 100644
+--- a/board/compulab/cl-som-imx8/cl-som-imx8.c
++++ b/board/compulab/cl-som-imx8/cl-som-imx8.c
+@@ -24,6 +24,7 @@
+ #include <power/pmic.h>
+ #include <power/pfuze100_pmic.h>
+ #include "common.h"
++#include "eeprom.h"
+ 
+ #include "../common/pfuze.h"
+ 
+@@ -89,6 +90,32 @@ static void setup_iomux_fec(void)
+ 	gpio_direction_output(IMX_GPIO_NR(1, 9), 1);
+ }
+ 
++#define NO_MAC_ADDR	"No MAC address found for %s\n"
++static int handle_mac_address(char *env_var, uint eeprom_bus)
++{
++	unsigned char enetaddr[6];
++	int rc;
++
++	rc = eth_getenv_enetaddr(env_var, enetaddr);
++	if (rc)
++		return 0;
++
++	rc = cpl_eeprom_read_mac_addr(enetaddr, eeprom_bus);
++	if (rc)
++		return rc;
++
++	if (!is_valid_ethaddr(enetaddr))
++		return -1;
++
++	return eth_setenv_enetaddr(env_var, enetaddr);
++}
++
++static inline void setup_mac_address()
++{
++	if (handle_mac_address("ethaddr", 0))
++		printf(NO_MAC_ADDR, "primary NIC");
++}
++
+ static int setup_fec(void)
+ {
+ 	setup_iomux_fec();
+@@ -99,6 +126,10 @@ static int setup_fec(void)
+ 	return set_clk_enet(ENET_125MHz);
+ }
+ 
++static void setup_fec_mac() {
++	if (handle_mac_address("ethaddr", /*CONFIG_SYS_I2C_EEPROM_BUS*/0))
++		printf(NO_MAC_ADDR, "primary NIC");
++}
+ 
+ int board_phy_config(struct phy_device *phydev)
+ {
+@@ -111,6 +142,9 @@ int board_phy_config(struct phy_device *phydev)
+ 
+ 	if (phydev->drv->config)
+ 		phydev->drv->config(phydev);
++
++	setup_mac_address();
++
+ 	return 0;
+ }
+ #endif
+-- 
+1.9.1
+
