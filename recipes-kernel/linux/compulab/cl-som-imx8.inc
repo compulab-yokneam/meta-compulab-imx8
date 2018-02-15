@@ -54,5 +54,12 @@ SRC_URI_append_cl-som-imx8 = " \
 	file://0052-cl-som-imx8-dts-Enable-pcie0.patch \
 	file://0053-cl-som-imx8-dts-UART4-change-parent-s-clock.patch \
 	file://0054-drm_atomic_helper-DRM_MODE_DPMS_ON.patch \
+	file://0055-cl-som-imx8-dts-UART1-prepare-for-rs485.patch \
+	file://0056-cl-som-imx8-Disable-ecspi3-bus.patch \
+	file://0057-cl-som-imx8-Change-pca9555-interrupt-leg-pull-up-set.patch \
+	file://0058-serial-imx-Allow-passing-rst-gpios-for-rs485-mode.patch \
+	file://0059-serial-imx-allow-passing-rs485-options.patch \
+	file://0060-serial-imx-Fix-the-RTS-GPIO-polarity-in-RS485-mode.patch \
+	file://0061-serial-imx-Fix-the-CTS_B-polarity-in-RS485-mode.patch \
 	file://defconfig \
 "
