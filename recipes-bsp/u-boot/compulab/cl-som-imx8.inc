@@ -16,5 +16,6 @@ SRC_URI_append_cl-som-imx8 = " \
 	file://0014-cl-som-imx8-Add-eeprom-support.patch \
 	file://0015-cl-som-imx8-Read-FEC-mac-address-from-eeprom.patch \
 	file://0016-cl-som-imx8-config-Disable-CONFIG_NXP_TMU.patch \
+	file://0017-cl-som-imx8-Set-correct-module-eeprom-bus-address.patch \
 	file://cl-som-imx8_defconfig \
 "
