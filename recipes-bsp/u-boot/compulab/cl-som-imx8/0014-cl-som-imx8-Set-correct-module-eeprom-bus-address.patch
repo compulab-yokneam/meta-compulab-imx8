@@ -1,7 +1,7 @@
-From 20d8cfd95f328eae7908c8a2c1e1dc4b1c5fe100 Mon Sep 17 00:00:00 2001
+From ed6e197387cd7619c18773a54a76748f3748e1e6 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 15 Mar 2018 11:24:23 +0200
-Subject: [PATCH 17/17] cl-som-imx8: Set correct module eeprom bus, address
+Subject: [PATCH 14/15] cl-som-imx8: Set correct module eeprom bus, address
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

@@ -1,7 +1,7 @@
-From 0cc890607c16ddb42702c3bb9bf64a6edb8e4246 Mon Sep 17 00:00:00 2001
+From 0cecdfe860f3d20bde0b6bebab890dcfe8563954 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Sun, 28 Jan 2018 20:00:11 +0200
-Subject: [PATCH 11/11] cl-som-imx8: Define the platform reset function
+Subject: [PATCH 08/15] cl-som-imx8: Define the platform reset function
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

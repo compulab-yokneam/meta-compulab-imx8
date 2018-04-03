@@ -1,7 +1,7 @@
-From 0cf9401423b729e414b10b276037e83f640126aa Mon Sep 17 00:00:00 2001
+From 24624de9ccf6056f9eccd47bfe13918ea36c9cd8 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Sun, 7 Jan 2018 14:36:40 +0200
-Subject: [PATCH 05/11] arm: imx8: cl-som-imx8: dts: Update
+Subject: [PATCH 02/15] arm: imx8: cl-som-imx8: dts: Update
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

@@ -1,7 +1,7 @@
-From 9ec4958b591b6a80fb450a01633c70616a1b984c Mon Sep 17 00:00:00 2001
+From 92d7caa9ea5b8158b7f18f8490812873def3a495 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 15 Feb 2018 13:41:24 +0200
-Subject: [PATCH 16/16] cl-som-imx8: config: Disable CONFIG_NXP_TMU
+Subject: [PATCH 13/15] cl-som-imx8: config: Disable CONFIG_NXP_TMU
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

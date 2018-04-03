@@ -1,0 +1,31 @@
+From ee8563c084a6d2d53be50cbbb21a9956c7fd372c Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Sun, 18 Mar 2018 14:59:43 +0200
+Subject: [PATCH 15/15] cl-som-imx8: Add ATP support
+
+Save environment on the eMMC if 'atp' ev is on.
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ board/compulab/cl-som-imx8/cl-som-imx8.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/board/compulab/cl-som-imx8/cl-som-imx8.c b/board/compulab/cl-som-imx8/cl-som-imx8.c
+index ea2cd57..5863e32 100644
+--- a/board/compulab/cl-som-imx8/cl-som-imx8.c
++++ b/board/compulab/cl-som-imx8/cl-som-imx8.c
+@@ -232,6 +232,11 @@ int board_init(void)
+ 
+ int board_mmc_get_env_dev(int devno)
+ {
++	const char *s = getenv("atp");
++	if (s != NULL) {
++		printf("ATP Mode: Save environmet on eMMC\n");
++		return CONFIG_SYS_MMC_ENV_DEV;
++	}
+ 	return devno;
+ }
+ 
+-- 
+1.9.1
+

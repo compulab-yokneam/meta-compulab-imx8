@@ -1,7 +1,7 @@
-From ee7089966d6752314f6124f41a91f23989693397 Mon Sep 17 00:00:00 2001
+From 456c5c1ec0eeaf81b23cc31c735c885823e9fee8 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 15 Feb 2018 10:43:35 +0200
-Subject: [PATCH 15/16] cl-som-imx8: Read FEC mac address from eeprom
+Subject: [PATCH 12/15] cl-som-imx8: Read FEC mac address from eeprom
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

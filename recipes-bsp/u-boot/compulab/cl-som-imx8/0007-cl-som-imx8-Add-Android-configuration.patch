@@ -1,7 +1,7 @@
-From 2005612011e51523c4e79bb8e3750af875c3455d Mon Sep 17 00:00:00 2001
+From 23959308187fa9767b4208421e2a38d8f630d256 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Fri, 26 Jan 2018 18:13:08 +0200
-Subject: [PATCH 10/11] cl-som-imx8: Add Android configuration
+Subject: [PATCH 07/15] cl-som-imx8: Add Android configuration
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

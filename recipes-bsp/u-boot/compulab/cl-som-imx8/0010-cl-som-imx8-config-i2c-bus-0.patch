@@ -1,7 +1,7 @@
-From 595425eb7b4f7ed528732ec1a619c447911af169 Mon Sep 17 00:00:00 2001
+From da32f306914eabf128be90c7641366e30f1e8e86 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 15 Feb 2018 10:41:06 +0200
-Subject: [PATCH 13/16] cl-som-imx8: config i2c bus 0
+Subject: [PATCH 10/15] cl-som-imx8: config i2c bus 0
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

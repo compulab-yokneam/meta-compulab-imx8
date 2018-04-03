@@ -1,7 +1,7 @@
-From f521817d86c74f10479564c8ab867e562a843912 Mon Sep 17 00:00:00 2001
+From 505184d9d43b18525d8a7f90c9878815bb2ca33b Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Sun, 21 Jan 2018 10:49:59 +0200
-Subject: [PATCH 06/11] arm: imx8: cl-som-imx8: spl: Add
+Subject: [PATCH 03/15] arm: imx8: cl-som-imx8: spl: Add
  board_fit_config_name_match()
 
 Add  board_fit_config_name_match() in order to allow

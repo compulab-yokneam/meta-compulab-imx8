@@ -1,7 +1,7 @@
-From d992d3e9a5158ecf5ed1d8aa742e44e848e45040 Mon Sep 17 00:00:00 2001
+From 56168af28542a08ec9ffbc72d663ca35044b4653 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 15 Feb 2018 10:41:43 +0200
-Subject: [PATCH 14/16] cl-som-imx8: Add eeprom support
+Subject: [PATCH 11/15] cl-som-imx8: Add eeprom support
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

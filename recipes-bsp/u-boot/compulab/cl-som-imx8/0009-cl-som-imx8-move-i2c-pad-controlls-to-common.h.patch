@@ -1,7 +1,7 @@
-From 411041bf95e3b0a80fa33e475ef481c4fed345b4 Mon Sep 17 00:00:00 2001
+From e3fe6210273c2cab110a3fdef5c73d3c4c8c207d Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 15 Feb 2018 10:33:31 +0200
-Subject: [PATCH 12/16] cl-som-imx8: move i2c pad controlls to common.h
+Subject: [PATCH 09/15] cl-som-imx8: move i2c pad controlls to common.h
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

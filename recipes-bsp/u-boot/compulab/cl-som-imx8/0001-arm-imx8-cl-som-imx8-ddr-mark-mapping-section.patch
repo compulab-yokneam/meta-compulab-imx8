@@ -1,7 +1,7 @@
-From 569fc2e162dbf1343796a31c48de95cd653994f1 Mon Sep 17 00:00:00 2001
+From 89a38a1d432fb7cf317a69a3afb3e8db7fd35e88 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 4 Jan 2018 07:56:42 +0200
-Subject: [PATCH 04/11] arm: imx8: cl-som-imx8: ddr: mark mapping section
+Subject: [PATCH 01/15] arm: imx8: cl-som-imx8: ddr: mark mapping section
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

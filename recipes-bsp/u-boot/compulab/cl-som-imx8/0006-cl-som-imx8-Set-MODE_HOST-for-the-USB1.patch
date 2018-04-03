@@ -1,7 +1,7 @@
-From b4cc46cab9a46b7905642349159669f944b78aa0 Mon Sep 17 00:00:00 2001
+From 35bf7cd0aabda007f918636740baf4317b5b10c3 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Fri, 26 Jan 2018 18:11:30 +0200
-Subject: [PATCH 09/11] cl-som-imx8: Set MODE_HOST for the USB1
+Subject: [PATCH 06/15] cl-som-imx8: Set MODE_HOST for the USB1
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

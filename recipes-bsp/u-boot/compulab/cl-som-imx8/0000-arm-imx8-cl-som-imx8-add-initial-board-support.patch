@@ -1,0 +1,3148 @@
+From 3c835ba9299d1d0a62b245d53ea00169ccfc3b01 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Wed, 4 Apr 2018 00:05:08 +0300
+Subject: [PATCH 00/15] arm: imx8: cl-som-imx8: add initial board support
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm/cpu/armv8/imx8m/Kconfig                   |   6 +
+ arch/arm/dts/Makefile                              |   2 +
+ arch/arm/dts/cl-som-imx8.dts                       | 608 ++++++++++++++++
+ board/compulab/cl-som-imx8/Kconfig                 |  12 +
+ board/compulab/cl-som-imx8/Makefile                |  12 +
+ board/compulab/cl-som-imx8/cl-som-imx8.c           | 206 ++++++
+ board/compulab/cl-som-imx8/common.c                |  62 ++
+ board/compulab/cl-som-imx8/common.h                |  15 +
+ board/compulab/cl-som-imx8/ddr/ddr.h               |  31 +
+ board/compulab/cl-som-imx8/ddr/ddr_init.c          | 192 +++++
+ board/compulab/cl-som-imx8/ddr/ddrphy_train.c      | 777 +++++++++++++++++++++
+ board/compulab/cl-som-imx8/ddr/helper.c            | 100 +++
+ .../ddr/wait_ddrphy_training_complete.c            |  96 +++
+ board/compulab/cl-som-imx8/spl.c                   | 241 +++++++
+ board/compulab/common/Makefile                     |   4 +
+ board/compulab/common/mmc.c                        |  48 ++
+ board/compulab/common/pfuze.c                      |  93 +++
+ board/compulab/common/pfuze.h                      |  19 +
+ board/compulab/common/pfuze_dm.c                   |  89 +++
+ configs/cl-som-imx8_defconfig                      |  33 +
+ include/configs/cl-som-imx8.h                      | 304 ++++++++
+ 21 files changed, 2950 insertions(+)
+ create mode 100644 arch/arm/dts/cl-som-imx8.dts
+ create mode 100644 board/compulab/cl-som-imx8/Kconfig
+ create mode 100644 board/compulab/cl-som-imx8/Makefile
+ create mode 100644 board/compulab/cl-som-imx8/cl-som-imx8.c
+ create mode 100644 board/compulab/cl-som-imx8/common.c
+ create mode 100644 board/compulab/cl-som-imx8/common.h
+ create mode 100644 board/compulab/cl-som-imx8/ddr/ddr.h
+ create mode 100644 board/compulab/cl-som-imx8/ddr/ddr_init.c
+ create mode 100644 board/compulab/cl-som-imx8/ddr/ddrphy_train.c
+ create mode 100644 board/compulab/cl-som-imx8/ddr/helper.c
+ create mode 100644 board/compulab/cl-som-imx8/ddr/wait_ddrphy_training_complete.c
+ create mode 100644 board/compulab/cl-som-imx8/spl.c
+ create mode 100644 board/compulab/common/mmc.c
+ create mode 100644 board/compulab/common/pfuze.c
+ create mode 100644 board/compulab/common/pfuze.h
+ create mode 100644 board/compulab/common/pfuze_dm.c
+ create mode 100644 configs/cl-som-imx8_defconfig
+ create mode 100644 include/configs/cl-som-imx8.h
+
+diff --git a/arch/arm/cpu/armv8/imx8m/Kconfig b/arch/arm/cpu/armv8/imx8m/Kconfig
+index 0c23db3..2601d8f 100644
+--- a/arch/arm/cpu/armv8/imx8m/Kconfig
++++ b/arch/arm/cpu/armv8/imx8m/Kconfig
+@@ -22,6 +22,11 @@ config TARGET_IMX8MQ_DDR4_ARM2
+ 	select IMX8M
+ 	select SUPPORT_SPL
+ 
++config TARGET_CL_SOM_IMX8
++	bool "cl-som-imx8"
++	select IMX8M
++	select SUPPORT_SPL
++
+ endchoice
+ 
+ config SYS_SOC
+@@ -29,5 +34,6 @@ config SYS_SOC
+ 
+ source "board/freescale/imx8mq_evk/Kconfig"
+ source "board/freescale/imx8mq_arm2/Kconfig"
++source "board/compulab/cl-som-imx8/Kconfig"
+ 
+ endif
+diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
+index afd1a5b..b368856 100644
+--- a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -390,6 +390,8 @@ dtb-$(CONFIG_ARCH_IMX8M) += fsl-imx8mq-evk.dtb \
+ 		fsl-imx8mq-ddr3l-arm2.dtb \
+ 		fsl-imx8mq-ddr4-arm2.dtb
+ 
++dtb-$(CONFIG_TARGET_CL_SOM_IMX8) += cl-som-imx8.dtb
++
+ dtb-$(CONFIG_ARCH_IMX8) += fsl-imx8qm-lpddr4-arm2.dtb \
+ 		fsl-imx8qm-ddr4-arm2.dtb \
+ 		fsl-imx8qm-mek.dtb \
+diff --git a/arch/arm/dts/cl-som-imx8.dts b/arch/arm/dts/cl-som-imx8.dts
+new file mode 100644
+index 0000000..441bd90
+--- /dev/null
++++ b/arch/arm/dts/cl-som-imx8.dts
+@@ -0,0 +1,608 @@
++/*
++ * Copyright (C) 2016 Freescale Semiconductor, Inc.
++ * Copyright 2017 NXP
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++/dts-v1/;
++
++/* First 128KB is for PSCI ATF. */
++/memreserve/ 0x40000000 0x00020000;
++
++#include "fsl-imx8mq.dtsi"
++
++/ {
++	model = "CompuLab CL-SOM-iMX8";
++	compatible = "fsl,imx8mq";
++
++	bcmdhd_wlan_0: bcmdhd_wlan@0 {
++		compatible = "android,bcmdhd_wlan";
++		bcmdhd_fw = "/lib/firmware/bcm/1CX_BCM4356/fw_bcmdhd.bin";
++		bcmdhd_nv = "/lib/firmware/bcm/1CX_BCM4356/bcmdhd.cal";
++	};
++
++	chosen {
++		bootargs = "console=ttymxc2,115200 earlycon=ec_imx6q,0x30880000,115200";
++		stdout-path = &uart3;
++	};
++
++	regulators {
++		compatible = "simple-bus";
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		reg_usdhc2_vmmc: usdhc2_vmmc {
++			compatible = "regulator-fixed";
++			regulator-name = "VSD_3V3";
++			regulator-min-microvolt = <3300000>;
++			regulator-max-microvolt = <3300000>;
++			gpio = <&gpio2 19 GPIO_ACTIVE_HIGH>;
++			enable-active-high;
++		};
++	};
++
++	modem_reset: modem-reset {
++		compatible = "gpio-reset";
++		reset-gpios = <&gpio3 5 GPIO_ACTIVE_LOW>;
++		reset-delay-us = <2000>;
++		reset-post-delay-ms = <40>;
++		#reset-cells = <0>;
++	};
++
++	wm8524: wm8524 {
++		compatible = "wlf,wm8524";
++		clocks = <&clk IMX8MQ_CLK_SAI2_ROOT>;
++		clock-names = "mclk";
++		wlf,mute-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
++	};
++
++	sound-wm8524 {
++		compatible = "fsl,imx-audio-wm8524";
++		model = "wm8524-audio";
++		audio-cpu = <&sai2>;
++		audio-codec = <&wm8524>;
++		audio-routing =
++			"Line Out Jack", "LINEVOUTL",
++			"Line Out Jack", "LINEVOUTR";
++	};
++
++	pwmleds {
++		compatible = "pwm-leds";
++
++		ledpwm2 {
++			label = "PWM2";
++			pwms = <&pwm2 0 50000>;
++			max-brightness = <255>;
++		};
++	};
++};
++
++&iomuxc {
++	pinctrl-names = "default";
++
++	imx8mq-evk {
++		pinctrl_fec1: fec1grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_ENET_MDC_ENET1_MDC		0x3
++				MX8MQ_IOMUXC_ENET_MDIO_ENET1_MDIO	0x23
++				MX8MQ_IOMUXC_ENET_TD3_ENET1_RGMII_TD3	0x1f
++				MX8MQ_IOMUXC_ENET_TD2_ENET1_RGMII_TD2	0x1f
++				MX8MQ_IOMUXC_ENET_TD1_ENET1_RGMII_TD1	0x1f
++				MX8MQ_IOMUXC_ENET_TD0_ENET1_RGMII_TD0	0x1f
++				MX8MQ_IOMUXC_ENET_RD3_ENET1_RGMII_RD3	0x91
++				MX8MQ_IOMUXC_ENET_RD2_ENET1_RGMII_RD2	0x91
++				MX8MQ_IOMUXC_ENET_RD1_ENET1_RGMII_RD1	0x91
++				MX8MQ_IOMUXC_ENET_RD0_ENET1_RGMII_RD0	0x91
++				MX8MQ_IOMUXC_ENET_TXC_ENET1_RGMII_TXC	0x1f
++				MX8MQ_IOMUXC_ENET_RXC_ENET1_RGMII_RXC	0x91
++				MX8MQ_IOMUXC_ENET_RX_CTL_ENET1_RGMII_RX_CTL	0x91
++				MX8MQ_IOMUXC_ENET_TX_CTL_ENET1_RGMII_TX_CTL	0x1f
++				MX8MQ_IOMUXC_GPIO1_IO09_GPIO1_IO9	0x19
++			>;
++		};
++
++		pinctrl_i2c1: i2c1grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_I2C1_SCL_I2C1_SCL			0x4000007f
++				MX8MQ_IOMUXC_I2C1_SDA_I2C1_SDA			0x4000007f
++			>;
++		};
++
++		pinctrl_i2c2: i2c2grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_I2C2_SCL_I2C2_SCL			0x4000007f
++				MX8MQ_IOMUXC_I2C2_SDA_I2C2_SDA			0x4000007f
++			>;
++		};
++
++
++		pinctrl_pcie0: pcie0grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_I2C4_SCL_GPIO5_IO20	0x16
++				MX8MQ_IOMUXC_UART4_TXD_GPIO5_IO29	0x16
++				MX8MQ_IOMUXC_UART4_RXD_GPIO5_IO28	0x16
++			>;
++		};
++
++		pinctrl_pcie1: pcie1grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_I2C4_SDA_GPIO5_IO21	0x16
++				MX8MQ_IOMUXC_ECSPI2_SCLK_GPIO5_IO10	0x16
++				MX8MQ_IOMUXC_ECSPI2_MISO_GPIO5_IO12	0x16
++			>;
++		};
++
++		pinctrl_pwm2: pwm2grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_GPIO1_IO13_PWM2_OUT	0x16
++			>;
++		};
++
++		pinctrl_qspi: qspigrp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_NAND_ALE_QSPI_A_SCLK	0x82
++				MX8MQ_IOMUXC_NAND_CE0_B_QSPI_A_SS0_B	0x82
++				MX8MQ_IOMUXC_NAND_DATA00_QSPI_A_DATA0	0x82
++				MX8MQ_IOMUXC_NAND_DATA01_QSPI_A_DATA1	0x82
++				MX8MQ_IOMUXC_NAND_DATA02_QSPI_A_DATA2	0x82
++				MX8MQ_IOMUXC_NAND_DATA03_QSPI_A_DATA3	0x82
++
++			>;
++		};
++
++		pinctrl_uart1: uart1grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_UART1_RXD_UART1_DCE_RX		0x79
++				MX8MQ_IOMUXC_UART1_TXD_UART1_DCE_TX		0x79
++			>;
++		};
++
++		pinctrl_uart3: uart3grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_UART3_TXD_UART3_DCE_TX		0x79
++				MX8MQ_IOMUXC_UART3_RXD_UART3_DCE_RX		0x79
++				MX8MQ_IOMUXC_ECSPI1_MISO_UART3_DCE_CTS_B	0x79
++				MX8MQ_IOMUXC_ECSPI1_SS0_UART3_DCE_RTS_B		0x79
++				MX8MQ_IOMUXC_NAND_CLE_GPIO3_IO5			0x19
++			>;
++		};
++
++		pinctrl_usdhc1: usdhc1grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_SD1_CLK_USDHC1_CLK			0x83
++				MX8MQ_IOMUXC_SD1_CMD_USDHC1_CMD			0xc3
++				MX8MQ_IOMUXC_SD1_DATA0_USDHC1_DATA0		0xc3
++				MX8MQ_IOMUXC_SD1_DATA1_USDHC1_DATA1		0xc3
++				MX8MQ_IOMUXC_SD1_DATA2_USDHC1_DATA2		0xc3
++				MX8MQ_IOMUXC_SD1_DATA3_USDHC1_DATA3		0xc3
++				MX8MQ_IOMUXC_SD1_DATA4_USDHC1_DATA4		0xc3
++				MX8MQ_IOMUXC_SD1_DATA5_USDHC1_DATA5		0xc3
++				MX8MQ_IOMUXC_SD1_DATA6_USDHC1_DATA6		0xc3
++				MX8MQ_IOMUXC_SD1_DATA7_USDHC1_DATA7		0xc3
++				MX8MQ_IOMUXC_SD1_STROBE_USDHC1_STROBE 		0x83
++				MX8MQ_IOMUXC_SD1_RESET_B_USDHC1_RESET_B		0xc1
++			>;
++		};
++
++		pinctrl_usdhc1_100mhz: usdhc1grp100mhz {
++			fsl,pins = <
++				MX8MQ_IOMUXC_SD1_CLK_USDHC1_CLK			0x85
++				MX8MQ_IOMUXC_SD1_CMD_USDHC1_CMD			0xc5
++				MX8MQ_IOMUXC_SD1_DATA0_USDHC1_DATA0		0xc5
++				MX8MQ_IOMUXC_SD1_DATA1_USDHC1_DATA1		0xc5
++				MX8MQ_IOMUXC_SD1_DATA2_USDHC1_DATA2		0xc5
++				MX8MQ_IOMUXC_SD1_DATA3_USDHC1_DATA3		0xc5
++				MX8MQ_IOMUXC_SD1_DATA4_USDHC1_DATA4		0xc5
++				MX8MQ_IOMUXC_SD1_DATA5_USDHC1_DATA5		0xc5
++				MX8MQ_IOMUXC_SD1_DATA6_USDHC1_DATA6		0xc5
++				MX8MQ_IOMUXC_SD1_DATA7_USDHC1_DATA7		0xc5
++				MX8MQ_IOMUXC_SD1_STROBE_USDHC1_STROBE 		0x85
++				MX8MQ_IOMUXC_SD1_RESET_B_USDHC1_RESET_B		0xc1
++			>;
++		};
++
++		pinctrl_usdhc1_200mhz: usdhc1grp200mhz {
++			fsl,pins = <
++				MX8MQ_IOMUXC_SD1_CLK_USDHC1_CLK			0x87
++				MX8MQ_IOMUXC_SD1_CMD_USDHC1_CMD			0xc7
++				MX8MQ_IOMUXC_SD1_DATA0_USDHC1_DATA0		0xc7
++				MX8MQ_IOMUXC_SD1_DATA1_USDHC1_DATA1		0xc7
++				MX8MQ_IOMUXC_SD1_DATA2_USDHC1_DATA2		0xc7
++				MX8MQ_IOMUXC_SD1_DATA3_USDHC1_DATA3		0xc7
++				MX8MQ_IOMUXC_SD1_DATA4_USDHC1_DATA4		0xc7
++				MX8MQ_IOMUXC_SD1_DATA5_USDHC1_DATA5		0xc7
++				MX8MQ_IOMUXC_SD1_DATA6_USDHC1_DATA6		0xc7
++				MX8MQ_IOMUXC_SD1_DATA7_USDHC1_DATA7		0xc7
++				MX8MQ_IOMUXC_SD1_STROBE_USDHC1_STROBE 		0x87
++				MX8MQ_IOMUXC_SD1_RESET_B_USDHC1_RESET_B		0xc1
++			>;
++		};
++
++		pinctrl_usdhc2_gpio: usdhc2grpgpio {
++			fsl,pins = <
++				MX8MQ_IOMUXC_SD2_CD_B_GPIO2_IO12	0x41
++				MX8MQ_IOMUXC_SD2_RESET_B_GPIO2_IO19	0x41
++			>;
++		};
++
++		pinctrl_usdhc2: usdhc2grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_SD2_CLK_USDHC2_CLK			0x83
++				MX8MQ_IOMUXC_SD2_CMD_USDHC2_CMD			0xc3
++				MX8MQ_IOMUXC_SD2_DATA0_USDHC2_DATA0		0xc3
++				MX8MQ_IOMUXC_SD2_DATA1_USDHC2_DATA1		0xc3
++				MX8MQ_IOMUXC_SD2_DATA2_USDHC2_DATA2		0xc3
++				MX8MQ_IOMUXC_SD2_DATA3_USDHC2_DATA3		0xc3
++				MX8MQ_IOMUXC_GPIO1_IO04_USDHC2_VSELECT		0xc1
++			>;
++		};
++
++		pinctrl_usdhc2_100mhz: usdhc2grp100mhz {
++			fsl,pins = <
++				MX8MQ_IOMUXC_SD2_CLK_USDHC2_CLK			0x85
++				MX8MQ_IOMUXC_SD2_CMD_USDHC2_CMD			0xc5
++				MX8MQ_IOMUXC_SD2_DATA0_USDHC2_DATA0		0xc5
++				MX8MQ_IOMUXC_SD2_DATA1_USDHC2_DATA1		0xc5
++				MX8MQ_IOMUXC_SD2_DATA2_USDHC2_DATA2		0xc5
++				MX8MQ_IOMUXC_SD2_DATA3_USDHC2_DATA3		0xc5
++				MX8MQ_IOMUXC_GPIO1_IO04_USDHC2_VSELECT		0xc1
++			>;
++		};
++
++		pinctrl_usdhc2_200mhz: usdhc2grp200mhz {
++			fsl,pins = <
++				MX8MQ_IOMUXC_SD2_CLK_USDHC2_CLK			0x87
++				MX8MQ_IOMUXC_SD2_CMD_USDHC2_CMD			0xc7
++				MX8MQ_IOMUXC_SD2_DATA0_USDHC2_DATA0		0xc7
++				MX8MQ_IOMUXC_SD2_DATA1_USDHC2_DATA1		0xc7
++				MX8MQ_IOMUXC_SD2_DATA2_USDHC2_DATA2		0xc7
++				MX8MQ_IOMUXC_SD2_DATA3_USDHC2_DATA3		0xc7
++				MX8MQ_IOMUXC_GPIO1_IO04_USDHC2_VSELECT		0xc1
++			>;
++		};
++
++		pinctrl_sai2: sai2grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_SAI2_TXFS_SAI2_TX_SYNC	0xd6
++				MX8MQ_IOMUXC_SAI2_TXC_SAI2_TX_BCLK	0xd6
++				MX8MQ_IOMUXC_SAI2_MCLK_SAI2_MCLK	0xd6
++				MX8MQ_IOMUXC_SAI2_TXD0_SAI2_TX_DATA0	0xd6
++				MX8MQ_IOMUXC_GPIO1_IO08_GPIO1_IO8	0xd6
++			>;
++		};
++
++		pinctrl_wdog: wdoggrp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_GPIO1_IO02_WDOG1_WDOG_B 0xc6
++			>;
++		};
++	};
++};
++
++&fec1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_fec1>;
++	phy-mode = "rgmii-id";
++	phy-handle = <&ethphy0>;
++	fsl,magic-packet;
++	status = "okay";
++
++	mdio {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		ethphy0: ethernet-phy@0 {
++			compatible = "ethernet-phy-ieee802.3-c22";
++			reg = <0>;
++			at803x,led-act-blind-workaround;
++			at803x,eee-disabled;
++		};
++	};
++};
++
++&i2c1 {
++	clock-frequency = <100000>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_i2c1>;
++	status = "okay";
++
++	pmic: pfuze100@08 {
++		compatible = "fsl,pfuze100";
++		reg = <0x08>;
++
++		regulators {
++			sw1a_reg: sw1ab {
++				regulator-min-microvolt = <300000>;
++				regulator-max-microvolt = <1875000>;
++				regulator-always-on;
++			};
++
++			sw1c_reg: sw1c {
++				regulator-min-microvolt = <300000>;
++				regulator-max-microvolt = <1875000>;
++				regulator-always-on;
++			};
++
++			sw2_reg: sw2 {
++				regulator-min-microvolt = <800000>;
++				regulator-max-microvolt = <3300000>;
++				regulator-always-on;
++			};
++
++			sw3a_reg: sw3ab {
++				regulator-min-microvolt = <400000>;
++				regulator-max-microvolt = <1975000>;
++				regulator-always-on;
++			};
++
++			sw4_reg: sw4 {
++				regulator-min-microvolt = <800000>;
++				regulator-max-microvolt = <3300000>;
++				regulator-always-on;
++			};
++
++			swbst_reg: swbst {
++				regulator-min-microvolt = <5000000>;
++				regulator-max-microvolt = <5150000>;
++			};
++
++			snvs_reg: vsnvs {
++				regulator-min-microvolt = <1000000>;
++				regulator-max-microvolt = <3000000>;
++				regulator-always-on;
++			};
++
++			vref_reg: vrefddr {
++				regulator-always-on;
++			};
++
++			vgen1_reg: vgen1 {
++				regulator-min-microvolt = <800000>;
++				regulator-max-microvolt = <1550000>;
++			};
++
++			vgen2_reg: vgen2 {
++				regulator-min-microvolt = <800000>;
++				regulator-max-microvolt = <1550000>;
++				regulator-always-on;
++			};
++
++			vgen3_reg: vgen3 {
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <3300000>;
++				regulator-always-on;
++			};
++
++			vgen4_reg: vgen4 {
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <3300000>;
++				regulator-always-on;
++			};
++
++			vgen5_reg: vgen5 {
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <3300000>;
++				regulator-always-on;
++			};
++
++			vgen6_reg: vgen6 {
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <3300000>;
++			};
++		};
++	};
++
++	adv7535: adv7535@3d {
++		compatible = "adi,adv7535";
++		reg = <0x3d>;		/* PD pin is low */
++		/* TODO: pin config & irq */
++		video-mode = <34>;	/* 1920x1080@30HZ */
++		dsi-traffic-mode = <0>;
++		bpp = <24>;
++		status = "okay";
++		port {
++			dsi_to_hdmi: endpoint {
++				remote-endpoint = <&mipi_dsi_ep>;
++			};
++		};
++	};
++};
++
++&i2c2 {
++	clock-frequency = <100000>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_i2c2>;
++	status = "disabled";
++};
++
++&pcie0{
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_pcie0>;
++	clkreq-gpio = <&gpio5 20 GPIO_ACTIVE_LOW>;
++	disable-gpio = <&gpio5 29 GPIO_ACTIVE_LOW>;
++	reset-gpio = <&gpio5 28 GPIO_ACTIVE_LOW>;
++	status = "okay";
++};
++
++&pcie1{
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_pcie1>;
++	clkreq-gpio = <&gpio5 21 GPIO_ACTIVE_LOW>;
++	disable-gpio = <&gpio5 10 GPIO_ACTIVE_LOW>;
++	reset-gpio = <&gpio5 12 GPIO_ACTIVE_LOW>;
++	status = "okay";
++};
++
++&pwm2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_pwm2>;
++	status = "okay";
++};
++
++&uart3 { /* console */
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_uart3>;
++	assigned-clocks = <&clk IMX8MQ_CLK_UART3_SRC>;
++	assigned-clock-parents = <&clk IMX8MQ_CLK_25M>;
++	status = "okay";
++};
++
++&lcdif {
++	status = "okay";
++	disp-dev = "mipi_dsi_northwest";
++	display = <&display0>;
++
++	display0: display@0 {
++		bits-per-pixel = <24>;
++		bus-width = <24>;
++
++		display-timings {
++			native-mode = <&timing0>;
++			timing0: timing0 {
++			clock-frequency = <9200000>;
++			hactive = <480>;
++			vactive = <272>;
++			hfront-porch = <8>;
++			hback-porch = <4>;
++			hsync-len = <41>;
++			vback-porch = <2>;
++			vfront-porch = <4>;
++			vsync-len = <10>;
++
++			hsync-active = <0>;
++			vsync-active = <0>;
++			de-active = <1>;
++			pixelclk-active = <0>;
++			};
++		};
++	};
++};
++
++&qspi {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_qspi>;
++	status = "okay";
++
++	flash0: n25q256a@0 {
++		reg = <0>;
++		#address-cells = <1>;
++		#size-cells = <1>;
++		compatible = "micron,n25q256a";
++		spi-max-frequency = <29000000>;
++		spi-nor,ddr-quad-read-dummy = <6>;
++	};
++};
++
++&mipi_dsi {
++	reset = <&src>;
++	mux-sel = <&gpr>;	/* lcdif or dcss */
++	status = "okay";
++	port {
++		mipi_dsi_ep: endpoint {
++			remote-endpoint = <&dsi_to_hdmi>;
++		};
++	};
++};
++
++#if 0
++&uart3 { /* BT */
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_uart3>;
++	assigned-clocks = <&clk IMX8MQ_CLK_UART3_SRC>;
++	assigned-clock-parents = <&clk IMX8MQ_SYS1_PLL_80M>;
++	fsl,uart-has-rtscts;
++	resets = <&modem_reset>;
++	status = "okay";
++};
++#endif
++
++&usdhc1 {
++	pinctrl-names = "default", "state_100mhz", "state_200mhz";
++	pinctrl-0 = <&pinctrl_usdhc1>;
++	pinctrl-1 = <&pinctrl_usdhc1_100mhz>;
++	pinctrl-2 = <&pinctrl_usdhc1_200mhz>;
++	bus-width = <8>;
++	non-removable;
++	status = "okay";
++};
++
++&usdhc2 {
++	pinctrl-names = "default", "state_100mhz", "state_200mhz";
++	pinctrl-0 = <&pinctrl_usdhc2>, <&pinctrl_usdhc2_gpio>;
++	pinctrl-1 = <&pinctrl_usdhc2_100mhz>, <&pinctrl_usdhc2_gpio>;
++	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_usdhc2_gpio>;
++	bus-width = <4>;
++	cd-gpios = <&gpio2 12 GPIO_ACTIVE_LOW>;
++	vmmc-supply = <&reg_usdhc2_vmmc>;
++	status = "okay";
++};
++
++&usb3_phy0 {
++	status = "okay";
++};
++
++&usb3_0 {
++	status = "okay";
++};
++
++&usb_dwc3_0 {
++	status = "okay";
++	dr_mode = "peripheral";
++};
++
++&usb3_phy1 {
++	status = "okay";
++};
++
++&usb3_1 {
++	status = "okay";
++};
++
++&usb_dwc3_1 {
++	status = "okay";
++	dr_mode = "host";
++};
++
++&sai2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_sai2>;
++	assigned-clocks = <&clk IMX8MQ_CLK_SAI2_SRC>,
++			<&clk IMX8MQ_AUDIO_PLL1>,
++			<&clk IMX8MQ_CLK_SAI2_PRE_DIV>,
++			<&clk IMX8MQ_CLK_SAI2_DIV>;
++	assigned-clock-parents = <&clk IMX8MQ_AUDIO_PLL1_OUT>;
++	assigned-clock-rates = <0>, <786432000>, <98306000>, <24576000>;
++	status = "okay";
++};
++
++&gpu {
++	status = "okay";
++};
++
++&vpu {
++	status = "okay";
++};
++
++&wdog1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_wdog>;
++	fsl,ext-reset-output;
++	status = "okay";
++};
++
++&cpu_alert0 {
++	temperature = <125000>;
++};
++
++&cpu_crit0 {
++	temperature = <165000>;
++};
+diff --git a/board/compulab/cl-som-imx8/Kconfig b/board/compulab/cl-som-imx8/Kconfig
+new file mode 100644
+index 0000000..a26a589
+--- /dev/null
++++ b/board/compulab/cl-som-imx8/Kconfig
+@@ -0,0 +1,12 @@
++if TARGET_CL_SOM_IMX8
++
++config SYS_BOARD
++	default "cl-som-imx8"
++
++config SYS_VENDOR
++	default "compulab"
++
++config SYS_CONFIG_NAME
++	default "cl-som-imx8"
++
++endif
+diff --git a/board/compulab/cl-som-imx8/Makefile b/board/compulab/cl-som-imx8/Makefile
+new file mode 100644
+index 0000000..431b6fe
+--- /dev/null
++++ b/board/compulab/cl-som-imx8/Makefile
+@@ -0,0 +1,12 @@
++#
++# Copyright 2017 CompuLab LTD.
++#
++# SPDX-License-Identifier:      GPL-2.0+
++#
++obj-y += common.o
++
++ifdef CONFIG_SPL_BUILD
++obj-y += spl.o ddr/ddrphy_train.o ddr/ddr_init.o ddr/helper.o
++else
++obj-y += cl-som-imx8.o
++endif
+diff --git a/board/compulab/cl-som-imx8/cl-som-imx8.c b/board/compulab/cl-som-imx8/cl-som-imx8.c
+new file mode 100644
+index 0000000..19a370a
+--- /dev/null
++++ b/board/compulab/cl-som-imx8/cl-som-imx8.c
+@@ -0,0 +1,206 @@
++/*
++ * Copyright 2016 Freescale Semiconductor, Inc.
++ * Copyright 2017 NXP
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#include <common.h>
++#include <malloc.h>
++#include <errno.h>
++#include <asm/io.h>
++#include <miiphy.h>
++#include <netdev.h>
++#include <asm/imx-common/iomux-v3.h>
++#include <asm-generic/gpio.h>
++#include <fsl_esdhc.h>
++#include <mmc.h>
++#include <asm/arch/imx8mq_pins.h>
++#include <asm/arch/sys_proto.h>
++#include <asm/imx-common/gpio.h>
++#include <asm/imx-common/mxc_i2c.h>
++#include <asm/arch/clock.h>
++#include <spl.h>
++#include <power/pmic.h>
++#include <power/pfuze100_pmic.h>
++#include "common.h"
++
++#include "../common/pfuze.h"
++
++#include <usb.h>
++#include <dwc3-uboot.h>
++
++DECLARE_GLOBAL_DATA_PTR;
++
++#define WDOG_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_HYS | PAD_CTL_PUE)
++
++static iomux_v3_cfg_t const wdog_pads[] = {
++	IMX8MQ_PAD_GPIO1_IO02__WDOG1_WDOG_B | MUX_PAD_CTRL(WDOG_PAD_CTRL),
++};
++
++#ifdef CONFIG_BOARD_POSTCLK_INIT
++int board_postclk_init(void)
++{
++	/* TODO */
++	return 0;
++}
++#endif
++
++int dram_init(void)
++{
++	gd->ram_size = PHYS_SDRAM_SIZE;
++
++	return 0;
++}
++
++#ifdef CONFIG_OF_BOARD_SETUP
++int ft_board_setup(void *blob, bd_t *bd)
++{
++	return 0;
++}
++#endif
++
++#ifdef CONFIG_FEC_MXC
++#define FEC_RST_PAD IMX_GPIO_NR(1, 9)
++static iomux_v3_cfg_t const fec1_rst_pads[] = {
++	IMX8MQ_PAD_GPIO1_IO09__GPIO1_IO9 | MUX_PAD_CTRL(NO_PAD_CTRL),
++};
++
++static void setup_iomux_fec(void)
++{
++	imx_iomux_v3_setup_multiple_pads(fec1_rst_pads, ARRAY_SIZE(fec1_rst_pads));
++
++	gpio_request(IMX_GPIO_NR(1, 9), "fec1_rst");
++	gpio_direction_output(IMX_GPIO_NR(1, 9), 0);
++	udelay(500);
++	gpio_direction_output(IMX_GPIO_NR(1, 9), 1);
++}
++
++static int setup_fec(void)
++{
++	setup_iomux_fec();
++
++	/* Use 125M anatop REF_CLK1 for ENET1, not from external */
++	clrsetbits_le32(IOMUXC_GPR1,
++			BIT(13) | BIT(17), 0);
++	return set_clk_enet(ENET_125MHz);
++}
++
++
++int board_phy_config(struct phy_device *phydev)
++{
++	/* enable rgmii rxc skew and phy mode select to RGMII copper */
++	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x1f);
++	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x8);
++
++	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x05);
++	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x100);
++
++	if (phydev->drv->config)
++		phydev->drv->config(phydev);
++	return 0;
++}
++#endif
++
++#ifdef CONFIG_USB_DWC3
++
++#define USB_PHY_CTRL0			0xF0040
++#define USB_PHY_CTRL0_REF_SSP_EN	BIT(2)
++
++#define USB_PHY_CTRL1			0xF0044
++#define USB_PHY_CTRL1_RESET		BIT(0)
++#define USB_PHY_CTRL1_COMMONONN		BIT(1)
++#define USB_PHY_CTRL1_ATERESET		BIT(3)
++#define USB_PHY_CTRL1_VDATSRCENB0	BIT(19)
++#define USB_PHY_CTRL1_VDATDETENB0	BIT(20)
++
++#define USB_PHY_CTRL2			0xF0048
++#define USB_PHY_CTRL2_TXENABLEN0	BIT(8)
++
++static struct dwc3_device dwc3_device_data = {
++	.maximum_speed = USB_SPEED_SUPER,
++	.base = USB1_BASE_ADDR,
++	.dr_mode = USB_DR_MODE_PERIPHERAL,
++	.index = 0,
++	.power_down_scale = 2,
++};
++
++int usb_gadget_handle_interrupts(void)
++{
++	dwc3_uboot_handle_interrupt(0);
++	return 0;
++}
++
++static void dwc3_nxp_usb_phy_init(struct dwc3_device *dwc3)
++{
++	u32 RegData;
++
++	RegData = readl(dwc3->base + USB_PHY_CTRL1);
++	RegData &= ~(USB_PHY_CTRL1_VDATSRCENB0 | USB_PHY_CTRL1_VDATDETENB0 |
++			USB_PHY_CTRL1_COMMONONN);
++	RegData |= USB_PHY_CTRL1_RESET | USB_PHY_CTRL1_ATERESET;
++	writel(RegData, dwc3->base + USB_PHY_CTRL1);
++
++	RegData = readl(dwc3->base + USB_PHY_CTRL0);
++	RegData |= USB_PHY_CTRL0_REF_SSP_EN;
++	writel(RegData, dwc3->base + USB_PHY_CTRL0);
++
++	RegData = readl(dwc3->base + USB_PHY_CTRL2);
++	RegData |= USB_PHY_CTRL2_TXENABLEN0;
++	writel(RegData, dwc3->base + USB_PHY_CTRL2);
++
++	RegData = readl(dwc3->base + USB_PHY_CTRL1);
++	RegData &= ~(USB_PHY_CTRL1_RESET | USB_PHY_CTRL1_ATERESET);
++	writel(RegData, dwc3->base + USB_PHY_CTRL1);
++}
++
++int board_usb_init(int index, enum usb_init_type init)
++{
++	dwc3_nxp_usb_phy_init(&dwc3_device_data);
++	return dwc3_uboot_init(&dwc3_device_data);
++}
++
++int board_usb_cleanup(int index, enum usb_init_type init)
++{
++	dwc3_uboot_exit(index);
++	return 0;
++}
++#endif
++
++int board_init(void)
++{
++
++#ifdef CONFIG_MXC_SPI
++	board_ecspi_init();
++#endif
++
++#ifdef CONFIG_FEC_MXC
++	setup_fec();
++#endif
++
++	return 0;
++}
++
++int board_mmc_get_env_dev(int devno)
++{
++	return devno;
++}
++
++int board_late_init(void)
++{
++
++#ifdef CONFIG_ENV_IS_IN_MMC
++	board_late_mmc_env_init();
++#endif
++
++	return 0;
++}
++
++#ifdef CONFIG_FSL_FASTBOOT
++#ifdef CONFIG_ANDROID_RECOVERY
++int is_recovery_key_pressing(void)
++{
++	return 0; /*TODO*/
++}
++#endif /*CONFIG_ANDROID_RECOVERY*/
++#endif /*CONFIG_FSL_FASTBOOT*/
+diff --git a/board/compulab/cl-som-imx8/common.c b/board/compulab/cl-som-imx8/common.c
+new file mode 100644
+index 0000000..08280bd
+--- /dev/null
++++ b/board/compulab/cl-som-imx8/common.c
+@@ -0,0 +1,62 @@
++#include "common.h"
++#include <asm/arch/clock.h>
++#include <asm/arch/imx8mq_pins.h>
++#include <asm-generic/gpio.h>
++#include <asm/imx-common/gpio.h>
++
++void set_wdog_reset(struct wdog_regs *wdog);
++
++#ifdef CONFIG_MXC_SPI
++
++#define ECSPI_PAD_CTRL	(PAD_CTL_DSE2 | PAD_CTL_HYS)
++#define CL_SOM_IMX8_ECSPI_BUS0_CS0	IMX_GPIO_NR(5, 9)
++
++static iomux_v3_cfg_t const ecspi_pads[] = {
++	IMX8MQ_PAD_ECSPI1_SCLK__ECSPI1_SCLK  | MUX_PAD_CTRL(ECSPI_PAD_CTRL),
++	IMX8MQ_PAD_ECSPI1_MOSI__ECSPI1_MOSI  | MUX_PAD_CTRL(ECSPI_PAD_CTRL),
++	IMX8MQ_PAD_ECSPI1_MISO__ECSPI1_MISO  | MUX_PAD_CTRL(ECSPI_PAD_CTRL),
++	IMX8MQ_PAD_ECSPI1_SS0__GPIO5_IO9 | MUX_PAD_CTRL(NO_PAD_CTRL),
++};
++
++int board_ecspi_init(void)
++{
++	imx_iomux_v3_setup_multiple_pads(ecspi_pads, ARRAY_SIZE(ecspi_pads));
++	gpio_request(CL_SOM_IMX8_ECSPI_BUS0_CS0, "ECSPI_BUS0_CS0");
++	/* CS must be up */
++	/* mxc_spi driver drives it low each time it issues a transaction */
++	gpio_direction_output(CL_SOM_IMX8_ECSPI_BUS0_CS0, 1);
++	set_clk_ecspi();
++	return 0;
++}
++
++int board_spi_cs_gpio(unsigned bus, unsigned cs)
++{
++	return (CL_SOM_IMX8_ECSPI_BUS0_CS0);
++}
++#endif
++
++#define WDOG_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_HYS | PAD_CTL_PUE)
++
++static iomux_v3_cfg_t const wdog_pads[] = {
++	IMX8MQ_PAD_GPIO1_IO02__WDOG1_WDOG_B | MUX_PAD_CTRL(WDOG_PAD_CTRL),
++};
++
++#define UART_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_FSEL1)
++
++static iomux_v3_cfg_t const uart_pads[] = {
++	IMX8MQ_PAD_UART3_RXD__UART3_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
++	IMX8MQ_PAD_UART3_TXD__UART3_TX | MUX_PAD_CTRL(UART_PAD_CTRL),
++};
++
++int board_early_init_f(void)
++{
++	struct wdog_regs *wdog = (struct wdog_regs *)WDOG1_BASE_ADDR;
++
++	imx_iomux_v3_setup_multiple_pads(wdog_pads, ARRAY_SIZE(wdog_pads));
++
++	set_wdog_reset(wdog);
++
++	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
++
++	return 0;
++}
+diff --git a/board/compulab/cl-som-imx8/common.h b/board/compulab/cl-som-imx8/common.h
+new file mode 100644
+index 0000000..09c9100
+--- /dev/null
++++ b/board/compulab/cl-som-imx8/common.h
+@@ -0,0 +1,15 @@
++#ifndef __CL_SOM_IMX8_COMMON_H__
++#define __CL_SOM_IMX8_COMMON_H__
++
++#include <asm/imx-common/iomux-v3.h>
++
++int board_early_init_f(void);
++
++#ifdef CONFIG_MXC_SPI
++int board_ecspi_init(void);
++int board_spi_cs_gpio(unsigned bus, unsigned cs);
++#else
++static inline int board_ecspi_init(void) { return 0; }
++#endif
++
++#endif /* __CL_SOM_IMX8_COMMON_H__ */
+diff --git a/board/compulab/cl-som-imx8/ddr/ddr.h b/board/compulab/cl-som-imx8/ddr/ddr.h
+new file mode 100644
+index 0000000..a1ae852
+--- /dev/null
++++ b/board/compulab/cl-som-imx8/ddr/ddr.h
+@@ -0,0 +1,31 @@
++/*
++ * Copyright 2017 NXP
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++void lpddr4_pub_train(void);
++void ddr4_load_train_code(void);
++void lpddr4_800M_cfg_phy(void);
++void ddr_init(void);
++void lpddr4_cfg_phy(void);
++
++static inline void reg32_write(unsigned long addr, u32 val)
++{
++	writel(val, addr);
++}
++
++static inline uint32_t reg32_read(unsigned long addr)
++{
++	return readl(addr);
++}
++
++static void inline dwc_ddrphy_apb_wr(unsigned long addr, u32 val)
++{
++    writel(val, addr);
++}
++
++static inline void reg32setbit(unsigned long addr, u32 bit)
++{
++	setbits_le32(addr, (1 << bit));
++}
+diff --git a/board/compulab/cl-som-imx8/ddr/ddr_init.c b/board/compulab/cl-som-imx8/ddr/ddr_init.c
+new file mode 100644
+index 0000000..10cca6e
+--- /dev/null
++++ b/board/compulab/cl-som-imx8/ddr/ddr_init.c
+@@ -0,0 +1,192 @@
++/*
++ * Copyright 2017 NXP
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#include <common.h>
++#include <errno.h>
++#include <asm/io.h>
++#include <asm/arch/ddr_memory_map.h>
++#include <asm/arch/clock.h>
++#include "ddr.h"
++
++#ifdef CONFIG_ENABLE_DDR_TRAINING_DEBUG
++#define ddr_printf(args...) printf(args)
++#else
++#define ddr_printf(args...)
++#endif
++
++#include "wait_ddrphy_training_complete.c"
++#ifndef SRC_DDRC_RCR_ADDR
++#define SRC_DDRC_RCR_ADDR SRC_IPS_BASE_ADDR +0x1000
++#endif
++#ifndef DDR_CSD1_BASE_ADDR
++#define DDR_CSD1_BASE_ADDR 0x40000000
++#endif
++#define SILICON_TRAIN
++
++void ddr_init(void)
++{
++	volatile unsigned int tmp, tmp_t;
++	/** Initialize DDR clock and DDRC registers **/
++	reg32_write(0x3038a088,0x7070000);
++	reg32_write(0x3038a084,0x4030000);
++	reg32_write(0x303a00ec,0xffff);
++	tmp=reg32_read(0x303a00f8);
++	tmp |= 0x20;
++	reg32_write(0x303a00f8,tmp);
++	reg32_write(0x30391000,0x8f000000);
++	reg32_write(0x30391004,0x8f000000);
++	reg32_write(0x30360068,0xbbe580);
++	tmp=reg32_read(0x30360060);
++	tmp &= ~0x80;
++	reg32_write(0x30360060,tmp);
++	tmp=reg32_read(0x30360060);
++	tmp |= 0x200;
++	reg32_write(0x30360060,tmp);
++	tmp=reg32_read(0x30360060);
++	tmp &= ~0x20;
++	reg32_write(0x30360060,tmp);
++	tmp=reg32_read(0x30360060);
++	tmp &= ~0x10;
++	reg32_write(0x30360060,tmp);
++	do{
++		tmp=reg32_read(0x30360060);
++		if(tmp&0x80000000) break;
++	}while(1);
++	reg32_write(0x30391000,0x8f000006);
++	reg32_write(0x3d400304,0x1);
++	reg32_write(0x3d400030,0x1);
++	reg32_write(0x3d400000,0x83080020);
++	reg32_write(0x3d400064,0x6100e0);
++	reg32_write(0x3d4000d0,0xc003061b);
++	reg32_write(0x3d4000d4,0x9d0000);
++	reg32_write(0x3d4000dc,0xd4002d);
++	reg32_write(0x3d4000e0,0x310008);
++	reg32_write(0x3d4000e8,0x46004d);
++	reg32_write(0x3d4000ec,0x15004d);
++	reg32_write(0x3d4000f4,0x639);
++	reg32_write(0x3d400100,0x1a201b22);
++	reg32_write(0x3d400104,0x60633);
++	reg32_write(0x3d400108,0x70e1114);
++	reg32_write(0x3d40010c,0xc0c000);
++	reg32_write(0x3d400110,0xf04080f);
++	reg32_write(0x3d400114,0x2040c0c);
++	reg32_write(0x3d400118,0x1010007);
++	reg32_write(0x3d40011c,0x401);
++	reg32_write(0x3d400130,0x20600);
++	reg32_write(0x3d400134,0xc100002);
++	reg32_write(0x3d400138,0xe6);
++	reg32_write(0x3d400144,0xa00050);
++	reg32_write(0x3d400180,0x3200018);
++	reg32_write(0x3d400184,0x28061a8);
++	reg32_write(0x3d400190,0x497820a);
++	reg32_write(0x3d400194,0x80303);
++	reg32_write(0x3d4001b4,0x170a);
++	reg32_write(0x3d4001b0,0x11);
++	reg32_write(0x3d4001a0,0xe0400018);
++	reg32_write(0x3d4001a4,0xdf00e4);
++	reg32_write(0x3d4001a8,0x0);
++	reg32_write(0x3d4001c0,0x1);
++	reg32_write(0x3d4001c4,0x1);
++	reg32_write(0x3d400200,0x16);
++	reg32_write(0x3d40020c,0x0);
++	reg32_write(0x3d400210,0x1f1f);
++	reg32_write(0x3d400204,0x80808);
++	reg32_write(0x3d400214,0x7070707);
++	reg32_write(0x3d400218,0xf070707);
++	reg32_write(0x3d400244,0x0);
++	reg32_write(0x3d400490,0x1);
++	reg32_write(0x30391000,0x8f000004);
++	reg32_write(0x30391000,0x8f000000);
++	reg32_write(0x3d400304,0x0);
++	reg32_write(0x3d400030,0xa8);
++	reg32_write(0x3d400320,0x0);
++	reg32_write(0x3d000000,0x1);
++	reg32_write(0x3d4001b0,0x10);
++	reg32_write(0x3c040280,0x0);
++	reg32_write(0x3c040284,0x1);
++	reg32_write(0x3c040288,0x2);
++	reg32_write(0x3c04028c,0x3);
++	reg32_write(0x3c040290,0x4);
++	reg32_write(0x3c040294,0x5);
++	reg32_write(0x3c040298,0x6);
++	reg32_write(0x3c04029c,0x7);
++	reg32_write(0x3c044280,0x2);
++	reg32_write(0x3c044284,0x6);
++	reg32_write(0x3c044288,0x4);
++	reg32_write(0x3c04428c,0x7);
++	reg32_write(0x3c044290,0x5);
++	reg32_write(0x3c044294,0x3);
++	reg32_write(0x3c044298,0x0);
++	reg32_write(0x3c04429c,0x1);
++	reg32_write(0x3c048280,0x0);
++	reg32_write(0x3c048284,0x1);
++	reg32_write(0x3c048288,0x2);
++	reg32_write(0x3c04828c,0x3);
++	reg32_write(0x3c048290,0x4);
++	reg32_write(0x3c048294,0x5);
++	reg32_write(0x3c048298,0x6);
++	reg32_write(0x3c04829c,0x7);
++	reg32_write(0x3c04c280,0x1);
++	reg32_write(0x3c04c284,0x3);
++	reg32_write(0x3c04c288,0x4);
++	reg32_write(0x3c04c28c,0x7);
++	reg32_write(0x3c04c290,0x6);
++	reg32_write(0x3c04c294,0x5);
++	reg32_write(0x3c04c298,0x0);
++	reg32_write(0x3c04c29c,0x2);
++
++	/* Configure LPDDR4 PHY's registers */
++	lpddr4_cfg_phy();
++
++	reg32_write(DDRC_RFSHCTL3(0), 0x00000000);
++	reg32_write(DDRC_SWCTL(0), 0x0000);
++	/*
++	 * ------------------- 9 -------------------
++	 * Set DFIMISC.dfi_init_start to 1 
++	 *  -----------------------------------------
++	 */
++	reg32_write(DDRC_DFIMISC(0), 0x00000030);
++	reg32_write(DDRC_SWCTL(0), 0x0001);
++
++	/* wait DFISTAT.dfi_init_complete to 1 */
++	tmp_t = 0;
++	while(tmp_t==0){
++		tmp  = reg32_read(DDRC_DFISTAT(0));
++		tmp_t = tmp & 0x01;
++		tmp  = reg32_read(DDRC_MRSTAT(0));
++	}
++
++	reg32_write(DDRC_SWCTL(0), 0x0000);
++
++	/* clear DFIMISC.dfi_init_complete_en */
++	reg32_write(DDRC_DFIMISC(0), 0x00000010);
++	reg32_write(DDRC_DFIMISC(0), 0x00000011);
++	reg32_write(DDRC_PWRCTL(0), 0x00000088);
++
++	tmp = reg32_read(DDRC_CRCPARSTAT(0));
++	/*
++	 * set SWCTL.sw_done to enable quasi-dynamic register
++	 * programming outside reset.
++	 */
++	reg32_write(DDRC_SWCTL(0), 0x00000001);
++
++	/* wait SWSTAT.sw_done_ack to 1 */
++	while((reg32_read(DDRC_SWSTAT(0)) & 0x1) == 0)
++		;
++
++	/* wait STAT.operating_mode([1:0] for ddr3) to normal state */
++	while ((reg32_read(DDRC_STAT(0)) & 0x3) != 0x1)
++		;
++
++	reg32_write(DDRC_PWRCTL(0), 0x00000088);
++	/* reg32_write(DDRC_PWRCTL(0), 0x018a); */
++	tmp = reg32_read(DDRC_CRCPARSTAT(0));
++
++	/* enable port 0 */
++	reg32_write(DDRC_PCTRL_0(0), 0x00000001);
++	tmp = reg32_read(DDRC_CRCPARSTAT(0));
++	reg32_write(DDRC_RFSHCTL3(0), 0x00000000);
++}
+diff --git a/board/compulab/cl-som-imx8/ddr/ddrphy_train.c b/board/compulab/cl-som-imx8/ddr/ddrphy_train.c
+new file mode 100644
+index 0000000..c7aba53
+--- /dev/null
++++ b/board/compulab/cl-som-imx8/ddr/ddrphy_train.c
+@@ -0,0 +1,777 @@
++/*
++ * Copyright 2017 NXP
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#include <common.h>
++#include <asm/io.h>
++#include <asm/arch/ddr_memory_map.h>
++#include "ddr.h"
++
++void ddr4_load_train_code(void);
++void wait_ddrphy_training_complete(void);
++
++void lpddr4_cfg_phy(void) {
++	unsigned int tmp, tmp_t;
++
++	//Init DDRPHY register...
++	reg32_write(0x3c080440,0x2);
++	reg32_write(0x3c080444,0x3);
++	reg32_write(0x3c080448,0x4);
++	reg32_write(0x3c08044c,0x5);
++	reg32_write(0x3c080450,0x0);
++	reg32_write(0x3c080454,0x1);
++	reg32_write(0x3c04017c,0x1ff);
++	reg32_write(0x3c04057c,0x1ff);
++	reg32_write(0x3c04417c,0x1ff);
++	reg32_write(0x3c04457c,0x1ff);
++	reg32_write(0x3c04817c,0x1ff);
++	reg32_write(0x3c04857c,0x1ff);
++	reg32_write(0x3c04c17c,0x1ff);
++	reg32_write(0x3c04c57c,0x1ff);
++	reg32_write(0x3c000154,0x1ff);
++	reg32_write(0x3c004154,0x1ff);
++	reg32_write(0x3c008154,0x1ff);
++	reg32_write(0x3c00c154,0x1ff);
++	reg32_write(0x3c010154,0x1ff);
++	reg32_write(0x3c014154,0x1ff);
++	reg32_write(0x3c018154,0x1ff);
++	reg32_write(0x3c01c154,0x1ff);
++	reg32_write(0x3c020154,0x1ff);
++	reg32_write(0x3c024154,0x1ff);
++	reg32_write(0x3c080314,0x19);
++	reg32_write(0x3c0800b8,0x2);
++	reg32_write(0x3c240810,0x0);
++	reg32_write(0x3c080090,0xab);
++	reg32_write(0x3c0800e8,0x0);
++	reg32_write(0x3c080158,0x3);
++	reg32_write(0x3c040134,0x280);
++	reg32_write(0x3c040534,0x280);
++	reg32_write(0x3c044134,0x280);
++	reg32_write(0x3c044534,0x280);
++	reg32_write(0x3c048134,0x280);
++	reg32_write(0x3c048534,0x280);
++	reg32_write(0x3c04c134,0x280);
++	reg32_write(0x3c04c534,0x280);
++	reg32_write(0x3c040124,0xe38);
++	reg32_write(0x3c040524,0xe38);
++	reg32_write(0x3c044124,0xe38);
++	reg32_write(0x3c044524,0xe38);
++	reg32_write(0x3c048124,0xe38);
++	reg32_write(0x3c048524,0xe38);
++	reg32_write(0x3c04c124,0xe38);
++	reg32_write(0x3c04c524,0xe38);
++	reg32_write(0x3c00010c,0x21);
++	reg32_write(0x3c00410c,0x21);
++	reg32_write(0x3c00810c,0x21);
++	reg32_write(0x3c00c10c,0x21);
++	reg32_write(0x3c01010c,0x21);
++	reg32_write(0x3c01410c,0x21);
++	reg32_write(0x3c01810c,0x21);
++	reg32_write(0x3c01c10c,0x21);
++	reg32_write(0x3c02010c,0x21);
++	reg32_write(0x3c02410c,0x21);
++	reg32_write(0x3c080060,0x3);
++	reg32_write(0x3c0801d4,0x4);
++	reg32_write(0x3c080140,0x0);
++	reg32_write(0x3c080020,0x320);
++	reg32_write(0x3c080220,0x9);
++	reg32_write(0x3c0802c8,0x19c);
++	reg32_write(0x3c04010c,0x5a1);
++	reg32_write(0x3c04050c,0x5a1);
++	reg32_write(0x3c04410c,0x5a1);
++	reg32_write(0x3c04450c,0x5a1);
++	reg32_write(0x3c04810c,0x5a1);
++	reg32_write(0x3c04850c,0x5a1);
++	reg32_write(0x3c04c10c,0x5a1);
++	reg32_write(0x3c04c50c,0x5a1);
++	reg32_write(0x3c0803e8,0x1);
++	reg32_write(0x3c080064,0x1);
++	reg32_write(0x3c0803c0,0x0);
++	reg32_write(0x3c0803c4,0x0);
++	reg32_write(0x3c0803c8,0x4444);
++	reg32_write(0x3c0803cc,0x8888);
++	reg32_write(0x3c0803d0,0x5555);
++	reg32_write(0x3c0803d4,0x0);
++	reg32_write(0x3c0803d8,0x0);
++	reg32_write(0x3c0803dc,0xf000);
++	reg32_write(0x3c08002c,0x65);
++	reg32_write(0x3c080030,0xc9);
++	reg32_write(0x3c080034,0x7d1);
++	reg32_write(0x3c080038,0x2c);
++	reg32_write(0x3c080094,0x0);
++	reg32_write(0x3c0800b4,0x0);
++	reg32_write(0x3c080180,0x2);
++
++	//enable APB bus to access DDRPHY RAM
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0xd0000, 0x0);
++	//load the 1D training image
++	ddr4_load_train_code();
++
++	//Reconfigure DDRPHY-FW DMEM structure...
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54000,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54001,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54002,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54003,0xc80);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54004,0x2);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54005,0x2850);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54006,0x14);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54007,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54008,0x131f);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54009,0xc8);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5400a,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5400b,0x2);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5400c,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5400d,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5400e,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5400f,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54010,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54011,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54012,0x310);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54013,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54014,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54015,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54016,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54017,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54018,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54019,0x2dd4);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5401a,0x31);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5401b,0x4d46);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5401c,0x4d08);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5401d,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5401e,0x15);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5401f,0x2dd4);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54020,0x31);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54021,0x4d46);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54022,0x4d08);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54023,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54024,0x15);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54025,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54026,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54027,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54028,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54029,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5402a,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5402b,0x1000);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5402c,0x3);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5402d,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5402e,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5402f,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54030,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54031,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54032,0xd400);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54033,0x312d);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54034,0x4600);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54035,0x84d);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54036,0x4d);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54037,0x1500);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54038,0xd400);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54039,0x312d);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5403a,0x4600);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5403b,0x84d);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5403c,0x4d);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5403d,0x1500);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5403e,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x5403f,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54040,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54041,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54042,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54043,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54044,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54045,0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x54046,0x0);
++
++	//disable APB bus to access DDRPHY RAM
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0xd0000, 0x1);
++	//Reset MPU and run
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0xd0099, 0x9);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0xd0099, 0x1);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0xd0099, 0x0);
++	wait_ddrphy_training_complete();
++
++	//Halt MPU
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0xd0099, 0x1);
++	//enable APB bus to access DDRPHY RAM
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0xd0000, 0x0);
++
++	//Load firmware PIE image
++	reg32_write(0x3c240000,0x10);
++	reg32_write(0x3c240004,0x400);
++	reg32_write(0x3c240008,0x10e);
++	reg32_write(0x3c24000c,0x0);
++	reg32_write(0x3c240010,0x0);
++	reg32_write(0x3c240014,0x8);
++	reg32_write(0x3c2400a4,0xb);
++	reg32_write(0x3c2400a8,0x480);
++	reg32_write(0x3c2400ac,0x109);
++	reg32_write(0x3c2400b0,0x8);
++	reg32_write(0x3c2400b4,0x448);
++	reg32_write(0x3c2400b8,0x139);
++	reg32_write(0x3c2400bc,0x8);
++	reg32_write(0x3c2400c0,0x478);
++	reg32_write(0x3c2400c4,0x109);
++	reg32_write(0x3c2400c8,0x0);
++	reg32_write(0x3c2400cc,0xe8);
++	reg32_write(0x3c2400d0,0x109);
++	reg32_write(0x3c2400d4,0x2);
++	reg32_write(0x3c2400d8,0x10);
++	reg32_write(0x3c2400dc,0x139);
++	reg32_write(0x3c2400e0,0xf);
++	reg32_write(0x3c2400e4,0x7c0);
++	reg32_write(0x3c2400e8,0x139);
++	reg32_write(0x3c2400ec,0x44);
++	reg32_write(0x3c2400f0,0x630);
++	reg32_write(0x3c2400f4,0x159);
++	reg32_write(0x3c2400f8,0x14f);
++	reg32_write(0x3c2400fc,0x630);
++	reg32_write(0x3c240100,0x159);
++	reg32_write(0x3c240104,0x47);
++	reg32_write(0x3c240108,0x630);
++	reg32_write(0x3c24010c,0x149);
++	reg32_write(0x3c240110,0x4f);
++	reg32_write(0x3c240114,0x630);
++	reg32_write(0x3c240118,0x179);
++	reg32_write(0x3c24011c,0x8);
++	reg32_write(0x3c240120,0xe0);
++	reg32_write(0x3c240124,0x109);
++	reg32_write(0x3c240128,0x0);
++	reg32_write(0x3c24012c,0x7c8);
++	reg32_write(0x3c240130,0x109);
++	reg32_write(0x3c240134,0x0);
++	reg32_write(0x3c240138,0x1);
++	reg32_write(0x3c24013c,0x8);
++	reg32_write(0x3c240140,0x0);
++	reg32_write(0x3c240144,0x45a);
++	reg32_write(0x3c240148,0x9);
++	reg32_write(0x3c24014c,0x0);
++	reg32_write(0x3c240150,0x448);
++	reg32_write(0x3c240154,0x109);
++	reg32_write(0x3c240158,0x40);
++	reg32_write(0x3c24015c,0x630);
++	reg32_write(0x3c240160,0x179);
++	reg32_write(0x3c240164,0x1);
++	reg32_write(0x3c240168,0x618);
++	reg32_write(0x3c24016c,0x109);
++	reg32_write(0x3c240170,0x40c0);
++	reg32_write(0x3c240174,0x630);
++	reg32_write(0x3c240178,0x149);
++	reg32_write(0x3c24017c,0x8);
++	reg32_write(0x3c240180,0x4);
++	reg32_write(0x3c240184,0x48);
++	reg32_write(0x3c240188,0x4040);
++	reg32_write(0x3c24018c,0x630);
++	reg32_write(0x3c240190,0x149);
++	reg32_write(0x3c240194,0x0);
++	reg32_write(0x3c240198,0x4);
++	reg32_write(0x3c24019c,0x48);
++	reg32_write(0x3c2401a0,0x40);
++	reg32_write(0x3c2401a4,0x630);
++	reg32_write(0x3c2401a8,0x149);
++	reg32_write(0x3c2401ac,0x10);
++	reg32_write(0x3c2401b0,0x4);
++	reg32_write(0x3c2401b4,0x18);
++	reg32_write(0x3c2401b8,0x0);
++	reg32_write(0x3c2401bc,0x4);
++	reg32_write(0x3c2401c0,0x78);
++	reg32_write(0x3c2401c4,0x549);
++	reg32_write(0x3c2401c8,0x630);
++	reg32_write(0x3c2401cc,0x159);
++	reg32_write(0x3c2401d0,0xd49);
++	reg32_write(0x3c2401d4,0x630);
++	reg32_write(0x3c2401d8,0x159);
++	reg32_write(0x3c2401dc,0x94a);
++	reg32_write(0x3c2401e0,0x630);
++	reg32_write(0x3c2401e4,0x159);
++	reg32_write(0x3c2401e8,0x441);
++	reg32_write(0x3c2401ec,0x630);
++	reg32_write(0x3c2401f0,0x149);
++	reg32_write(0x3c2401f4,0x42);
++	reg32_write(0x3c2401f8,0x630);
++	reg32_write(0x3c2401fc,0x149);
++	reg32_write(0x3c240200,0x1);
++	reg32_write(0x3c240204,0x630);
++	reg32_write(0x3c240208,0x149);
++	reg32_write(0x3c24020c,0x0);
++	reg32_write(0x3c240210,0xe0);
++	reg32_write(0x3c240214,0x109);
++	reg32_write(0x3c240218,0xa);
++	reg32_write(0x3c24021c,0x10);
++	reg32_write(0x3c240220,0x109);
++	reg32_write(0x3c240224,0x9);
++	reg32_write(0x3c240228,0x3c0);
++	reg32_write(0x3c24022c,0x149);
++	reg32_write(0x3c240230,0x9);
++	reg32_write(0x3c240234,0x3c0);
++	reg32_write(0x3c240238,0x159);
++	reg32_write(0x3c24023c,0x18);
++	reg32_write(0x3c240240,0x10);
++	reg32_write(0x3c240244,0x109);
++	reg32_write(0x3c240248,0x0);
++	reg32_write(0x3c24024c,0x3c0);
++	reg32_write(0x3c240250,0x109);
++	reg32_write(0x3c240254,0x18);
++	reg32_write(0x3c240258,0x4);
++	reg32_write(0x3c24025c,0x48);
++	reg32_write(0x3c240260,0x18);
++	reg32_write(0x3c240264,0x4);
++	reg32_write(0x3c240268,0x58);
++	reg32_write(0x3c24026c,0xa);
++	reg32_write(0x3c240270,0x10);
++	reg32_write(0x3c240274,0x109);
++	reg32_write(0x3c240278,0x2);
++	reg32_write(0x3c24027c,0x10);
++	reg32_write(0x3c240280,0x109);
++	reg32_write(0x3c240284,0x5);
++	reg32_write(0x3c240288,0x7c0);
++	reg32_write(0x3c24028c,0x109);
++	reg32_write(0x3c240290,0x10);
++	reg32_write(0x3c240294,0x10);
++	reg32_write(0x3c240298,0x109);
++	reg32_write(0x3c100000,0x811);
++	reg32_write(0x3c100080,0x880);
++	reg32_write(0x3c100100,0x0);
++	reg32_write(0x3c100180,0x0);
++	reg32_write(0x3c100004,0x4016);
++	reg32_write(0x3c100084,0x83);
++	reg32_write(0x3c100104,0x4f);
++	reg32_write(0x3c100184,0x0);
++	reg32_write(0x3c100008,0x4040);
++	reg32_write(0x3c100088,0x83);
++	reg32_write(0x3c100108,0x51);
++	reg32_write(0x3c100188,0x0);
++	reg32_write(0x3c10000c,0x811);
++	reg32_write(0x3c10008c,0x880);
++	reg32_write(0x3c10010c,0x0);
++	reg32_write(0x3c10018c,0x0);
++	reg32_write(0x3c100010,0x720);
++	reg32_write(0x3c100090,0xf);
++	reg32_write(0x3c100110,0x1740);
++	reg32_write(0x3c100190,0x0);
++	reg32_write(0x3c100014,0x16);
++	reg32_write(0x3c100094,0x83);
++	reg32_write(0x3c100114,0x4b);
++	reg32_write(0x3c100194,0x0);
++	reg32_write(0x3c100018,0x716);
++	reg32_write(0x3c100098,0xf);
++	reg32_write(0x3c100118,0x2001);
++	reg32_write(0x3c100198,0x0);
++	reg32_write(0x3c10001c,0x716);
++	reg32_write(0x3c10009c,0xf);
++	reg32_write(0x3c10011c,0x2800);
++	reg32_write(0x3c10019c,0x0);
++	reg32_write(0x3c100020,0x716);
++	reg32_write(0x3c1000a0,0xf);
++	reg32_write(0x3c100120,0xf00);
++	reg32_write(0x3c1001a0,0x0);
++	reg32_write(0x3c100024,0x720);
++	reg32_write(0x3c1000a4,0xf);
++	reg32_write(0x3c100124,0x1400);
++	reg32_write(0x3c1001a4,0x0);
++	reg32_write(0x3c100028,0xe08);
++	reg32_write(0x3c1000a8,0xc15);
++	reg32_write(0x3c100128,0x0);
++	reg32_write(0x3c1001a8,0x0);
++	reg32_write(0x3c10002c,0x623);
++	reg32_write(0x3c1000ac,0x15);
++	reg32_write(0x3c10012c,0x0);
++	reg32_write(0x3c1001ac,0x0);
++	reg32_write(0x3c100030,0x4004);
++	reg32_write(0x3c1000b0,0x80);
++	reg32_write(0x3c100130,0x0);
++	reg32_write(0x3c1001b0,0x0);
++	reg32_write(0x3c100034,0xe08);
++	reg32_write(0x3c1000b4,0xc1a);
++	reg32_write(0x3c100134,0x0);
++	reg32_write(0x3c1001b4,0x0);
++	reg32_write(0x3c100038,0x623);
++	reg32_write(0x3c1000b8,0x1a);
++	reg32_write(0x3c100138,0x0);
++	reg32_write(0x3c1001b8,0x0);
++	reg32_write(0x3c10003c,0x4040);
++	reg32_write(0x3c1000bc,0x80);
++	reg32_write(0x3c10013c,0x0);
++	reg32_write(0x3c1001bc,0x0);
++	reg32_write(0x3c100040,0x2604);
++	reg32_write(0x3c1000c0,0x15);
++	reg32_write(0x3c100140,0x0);
++	reg32_write(0x3c1001c0,0x0);
++	reg32_write(0x3c100044,0x708);
++	reg32_write(0x3c1000c4,0x5);
++	reg32_write(0x3c100144,0x0);
++	reg32_write(0x3c1001c4,0x2002);
++	reg32_write(0x3c100048,0x8);
++	reg32_write(0x3c1000c8,0x80);
++	reg32_write(0x3c100148,0x0);
++	reg32_write(0x3c1001c8,0x0);
++	reg32_write(0x3c10004c,0x2604);
++	reg32_write(0x3c1000cc,0x1a);
++	reg32_write(0x3c10014c,0x0);
++	reg32_write(0x3c1001cc,0x0);
++	reg32_write(0x3c100050,0x708);
++	reg32_write(0x3c1000d0,0xa);
++	reg32_write(0x3c100150,0x0);
++	reg32_write(0x3c1001d0,0x2002);
++	reg32_write(0x3c100054,0x4040);
++	reg32_write(0x3c1000d4,0x80);
++	reg32_write(0x3c100154,0x0);
++	reg32_write(0x3c1001d4,0x0);
++	reg32_write(0x3c100058,0x60a);
++	reg32_write(0x3c1000d8,0x15);
++	reg32_write(0x3c100158,0x1200);
++	reg32_write(0x3c1001d8,0x0);
++	reg32_write(0x3c10005c,0x61a);
++	reg32_write(0x3c1000dc,0x15);
++	reg32_write(0x3c10015c,0x1300);
++	reg32_write(0x3c1001dc,0x0);
++	reg32_write(0x3c100060,0x60a);
++	reg32_write(0x3c1000e0,0x1a);
++	reg32_write(0x3c100160,0x1200);
++	reg32_write(0x3c1001e0,0x0);
++	reg32_write(0x3c100064,0x642);
++	reg32_write(0x3c1000e4,0x1a);
++	reg32_write(0x3c100164,0x1300);
++	reg32_write(0x3c1001e4,0x0);
++	reg32_write(0x3c100068,0x4808);
++	reg32_write(0x3c1000e8,0x880);
++	reg32_write(0x3c100168,0x0);
++	reg32_write(0x3c1001e8,0x0);
++	reg32_write(0x3c24029c,0x0);
++	reg32_write(0x3c2402a0,0x790);
++	reg32_write(0x3c2402a4,0x11a);
++	reg32_write(0x3c2402a8,0x8);
++	reg32_write(0x3c2402ac,0x7aa);
++	reg32_write(0x3c2402b0,0x2a);
++	reg32_write(0x3c2402b4,0x10);
++	reg32_write(0x3c2402b8,0x7b2);
++	reg32_write(0x3c2402bc,0x2a);
++	reg32_write(0x3c2402c0,0x0);
++	reg32_write(0x3c2402c4,0x7c8);
++	reg32_write(0x3c2402c8,0x109);
++	reg32_write(0x3c2402cc,0x10);
++	reg32_write(0x3c2402d0,0x2a8);
++	reg32_write(0x3c2402d4,0x129);
++	reg32_write(0x3c2402d8,0x8);
++	reg32_write(0x3c2402dc,0x370);
++	reg32_write(0x3c2402e0,0x129);
++	reg32_write(0x3c2402e4,0xa);
++	reg32_write(0x3c2402e8,0x3c8);
++	reg32_write(0x3c2402ec,0x1a9);
++	reg32_write(0x3c2402f0,0xc);
++	reg32_write(0x3c2402f4,0x408);
++	reg32_write(0x3c2402f8,0x199);
++	reg32_write(0x3c2402fc,0x14);
++	reg32_write(0x3c240300,0x790);
++	reg32_write(0x3c240304,0x11a);
++	reg32_write(0x3c240308,0x8);
++	reg32_write(0x3c24030c,0x4);
++	reg32_write(0x3c240310,0x18);
++	reg32_write(0x3c240314,0xc);
++	reg32_write(0x3c240318,0x408);
++	reg32_write(0x3c24031c,0x199);
++	reg32_write(0x3c240320,0x8);
++	reg32_write(0x3c240324,0x8568);
++	reg32_write(0x3c240328,0x108);
++	reg32_write(0x3c24032c,0x18);
++	reg32_write(0x3c240330,0x790);
++	reg32_write(0x3c240334,0x16a);
++	reg32_write(0x3c240338,0x8);
++	reg32_write(0x3c24033c,0x1d8);
++	reg32_write(0x3c240340,0x169);
++	reg32_write(0x3c240344,0x10);
++	reg32_write(0x3c240348,0x8558);
++	reg32_write(0x3c24034c,0x168);
++	reg32_write(0x3c240350,0x70);
++	reg32_write(0x3c240354,0x788);
++	reg32_write(0x3c240358,0x16a);
++	reg32_write(0x3c24035c,0x1ff8);
++	reg32_write(0x3c240360,0x85a8);
++	reg32_write(0x3c240364,0x1e8);
++	reg32_write(0x3c240368,0x50);
++	reg32_write(0x3c24036c,0x798);
++	reg32_write(0x3c240370,0x16a);
++	reg32_write(0x3c240374,0x60);
++	reg32_write(0x3c240378,0x7a0);
++	reg32_write(0x3c24037c,0x16a);
++	reg32_write(0x3c240380,0x8);
++	reg32_write(0x3c240384,0x8310);
++	reg32_write(0x3c240388,0x168);
++	reg32_write(0x3c24038c,0x8);
++	reg32_write(0x3c240390,0xa310);
++	reg32_write(0x3c240394,0x168);
++	reg32_write(0x3c240398,0xa);
++	reg32_write(0x3c24039c,0x408);
++	reg32_write(0x3c2403a0,0x169);
++	reg32_write(0x3c2403a4,0x6e);
++	reg32_write(0x3c2403a8,0x0);
++	reg32_write(0x3c2403ac,0x68);
++	reg32_write(0x3c2403b0,0x0);
++	reg32_write(0x3c2403b4,0x408);
++	reg32_write(0x3c2403b8,0x169);
++	reg32_write(0x3c2403bc,0x0);
++	reg32_write(0x3c2403c0,0x8310);
++	reg32_write(0x3c2403c4,0x168);
++	reg32_write(0x3c2403c8,0x0);
++	reg32_write(0x3c2403cc,0xa310);
++	reg32_write(0x3c2403d0,0x168);
++	reg32_write(0x3c2403d4,0x1ff8);
++	reg32_write(0x3c2403d8,0x85a8);
++	reg32_write(0x3c2403dc,0x1e8);
++	reg32_write(0x3c2403e0,0x68);
++	reg32_write(0x3c2403e4,0x798);
++	reg32_write(0x3c2403e8,0x16a);
++	reg32_write(0x3c2403ec,0x78);
++	reg32_write(0x3c2403f0,0x7a0);
++	reg32_write(0x3c2403f4,0x16a);
++	reg32_write(0x3c2403f8,0x68);
++	reg32_write(0x3c2403fc,0x790);
++	reg32_write(0x3c240400,0x16a);
++	reg32_write(0x3c240404,0x8);
++	reg32_write(0x3c240408,0x8b10);
++	reg32_write(0x3c24040c,0x168);
++	reg32_write(0x3c240410,0x8);
++	reg32_write(0x3c240414,0xab10);
++	reg32_write(0x3c240418,0x168);
++	reg32_write(0x3c24041c,0xa);
++	reg32_write(0x3c240420,0x408);
++	reg32_write(0x3c240424,0x169);
++	reg32_write(0x3c240428,0x58);
++	reg32_write(0x3c24042c,0x0);
++	reg32_write(0x3c240430,0x68);
++	reg32_write(0x3c240434,0x0);
++	reg32_write(0x3c240438,0x408);
++	reg32_write(0x3c24043c,0x169);
++	reg32_write(0x3c240440,0x0);
++	reg32_write(0x3c240444,0x8b10);
++	reg32_write(0x3c240448,0x168);
++	reg32_write(0x3c24044c,0x0);
++	reg32_write(0x3c240450,0xab10);
++	reg32_write(0x3c240454,0x168);
++	reg32_write(0x3c240458,0x0);
++	reg32_write(0x3c24045c,0x1d8);
++	reg32_write(0x3c240460,0x169);
++	reg32_write(0x3c240464,0x80);
++	reg32_write(0x3c240468,0x790);
++	reg32_write(0x3c24046c,0x16a);
++	reg32_write(0x3c240470,0x18);
++	reg32_write(0x3c240474,0x7aa);
++	reg32_write(0x3c240478,0x6a);
++	reg32_write(0x3c24047c,0xa);
++	reg32_write(0x3c240480,0x0);
++	reg32_write(0x3c240484,0x1e9);
++	reg32_write(0x3c240488,0x8);
++	reg32_write(0x3c24048c,0x8080);
++	reg32_write(0x3c240490,0x108);
++	reg32_write(0x3c240494,0xf);
++	reg32_write(0x3c240498,0x408);
++	reg32_write(0x3c24049c,0x169);
++	reg32_write(0x3c2404a0,0xc);
++	reg32_write(0x3c2404a4,0x0);
++	reg32_write(0x3c2404a8,0x68);
++	reg32_write(0x3c2404ac,0x9);
++	reg32_write(0x3c2404b0,0x0);
++	reg32_write(0x3c2404b4,0x1a9);
++	reg32_write(0x3c2404b8,0x0);
++	reg32_write(0x3c2404bc,0x408);
++	reg32_write(0x3c2404c0,0x169);
++	reg32_write(0x3c2404c4,0x0);
++	reg32_write(0x3c2404c8,0x8080);
++	reg32_write(0x3c2404cc,0x108);
++	reg32_write(0x3c2404d0,0x8);
++	reg32_write(0x3c2404d4,0x7aa);
++	reg32_write(0x3c2404d8,0x6a);
++	reg32_write(0x3c2404dc,0x0);
++	reg32_write(0x3c2404e0,0x8568);
++	reg32_write(0x3c2404e4,0x108);
++	reg32_write(0x3c2404e8,0xb7);
++	reg32_write(0x3c2404ec,0x790);
++	reg32_write(0x3c2404f0,0x16a);
++	reg32_write(0x3c2404f4,0x1d);
++	reg32_write(0x3c2404f8,0x0);
++	reg32_write(0x3c2404fc,0x68);
++	reg32_write(0x3c240500,0x8);
++	reg32_write(0x3c240504,0x8558);
++	reg32_write(0x3c240508,0x168);
++	reg32_write(0x3c24050c,0xf);
++	reg32_write(0x3c240510,0x408);
++	reg32_write(0x3c240514,0x169);
++	reg32_write(0x3c240518,0xc);
++	reg32_write(0x3c24051c,0x0);
++	reg32_write(0x3c240520,0x68);
++	reg32_write(0x3c240524,0x0);
++	reg32_write(0x3c240528,0x408);
++	reg32_write(0x3c24052c,0x169);
++	reg32_write(0x3c240530,0x0);
++	reg32_write(0x3c240534,0x8558);
++	reg32_write(0x3c240538,0x168);
++	reg32_write(0x3c24053c,0x8);
++	reg32_write(0x3c240540,0x3c8);
++	reg32_write(0x3c240544,0x1a9);
++	reg32_write(0x3c240548,0x3);
++	reg32_write(0x3c24054c,0x370);
++	reg32_write(0x3c240550,0x129);
++	reg32_write(0x3c240554,0x20);
++	reg32_write(0x3c240558,0x2aa);
++	reg32_write(0x3c24055c,0x9);
++	reg32_write(0x3c240560,0x0);
++	reg32_write(0x3c240564,0x400);
++	reg32_write(0x3c240568,0x10e);
++	reg32_write(0x3c24056c,0x8);
++	reg32_write(0x3c240570,0xe8);
++	reg32_write(0x3c240574,0x109);
++	reg32_write(0x3c240578,0x0);
++	reg32_write(0x3c24057c,0x8140);
++	reg32_write(0x3c240580,0x10c);
++	reg32_write(0x3c240584,0x10);
++	reg32_write(0x3c240588,0x8138);
++	reg32_write(0x3c24058c,0x10c);
++	reg32_write(0x3c240590,0x8);
++	reg32_write(0x3c240594,0x7c8);
++	reg32_write(0x3c240598,0x101);
++	reg32_write(0x3c24059c,0x8);
++	reg32_write(0x3c2405a0,0x0);
++	reg32_write(0x3c2405a4,0x8);
++	reg32_write(0x3c2405a8,0x8);
++	reg32_write(0x3c2405ac,0x448);
++	reg32_write(0x3c2405b0,0x109);
++	reg32_write(0x3c2405b4,0xf);
++	reg32_write(0x3c2405b8,0x7c0);
++	reg32_write(0x3c2405bc,0x109);
++	reg32_write(0x3c2405c0,0x0);
++	reg32_write(0x3c2405c4,0xe8);
++	reg32_write(0x3c2405c8,0x109);
++	reg32_write(0x3c2405cc,0x47);
++	reg32_write(0x3c2405d0,0x630);
++	reg32_write(0x3c2405d4,0x109);
++	reg32_write(0x3c2405d8,0x8);
++	reg32_write(0x3c2405dc,0x618);
++	reg32_write(0x3c2405e0,0x109);
++	reg32_write(0x3c2405e4,0x8);
++	reg32_write(0x3c2405e8,0xe0);
++	reg32_write(0x3c2405ec,0x109);
++	reg32_write(0x3c2405f0,0x0);
++	reg32_write(0x3c2405f4,0x7c8);
++	reg32_write(0x3c2405f8,0x109);
++	reg32_write(0x3c2405fc,0x8);
++	reg32_write(0x3c240600,0x8140);
++	reg32_write(0x3c240604,0x10c);
++	reg32_write(0x3c240608,0x0);
++	reg32_write(0x3c24060c,0x1);
++	reg32_write(0x3c240610,0x8);
++	reg32_write(0x3c240614,0x8);
++	reg32_write(0x3c240618,0x4);
++	reg32_write(0x3c24061c,0x8);
++	reg32_write(0x3c240620,0x8);
++	reg32_write(0x3c240624,0x7c8);
++	reg32_write(0x3c240628,0x101);
++	reg32_write(0x3c240018,0x0);
++	reg32_write(0x3c24001c,0x0);
++	reg32_write(0x3c240020,0x8);
++	reg32_write(0x3c240024,0x0);
++	reg32_write(0x3c240028,0x0);
++	reg32_write(0x3c24002c,0x0);
++	reg32_write(0x3c34039c,0x400);
++	reg32_write(0x3c24005c,0x0);
++	reg32_write(0x3c24007c,0x2a);
++	reg32_write(0x3c240098,0x6a);
++	reg32_write(0x3c100340,0x0);
++	reg32_write(0x3c100344,0x101);
++	reg32_write(0x3c100348,0x105);
++	reg32_write(0x3c10034c,0x107);
++	reg32_write(0x3c100350,0x10f);
++	reg32_write(0x3c100354,0x202);
++	reg32_write(0x3c100358,0x20a);
++	reg32_write(0x3c10035c,0x20b);
++	reg32_write(0x3c0800e8,0x2);
++	reg32_write(0x3c240030,0x0);
++	reg32_write(0x3c240034,0x173);
++	reg32_write(0x3c240038,0x60);
++	reg32_write(0x3c24003c,0x6110);
++	reg32_write(0x3c240040,0x2152);
++	reg32_write(0x3c240044,0xdfbd);
++	reg32_write(0x3c240048,0x60);
++	reg32_write(0x3c24004c,0x6152);
++	reg32_write(0x3c080040,0x5a);
++	reg32_write(0x3c080044,0x3);
++	reg32_write(0x3c100200,0xe0);
++	reg32_write(0x3c100204,0x12);
++	reg32_write(0x3c100208,0xe0);
++	reg32_write(0x3c10020c,0x12);
++	reg32_write(0x3c100210,0xe0);
++	reg32_write(0x3c100214,0x12);
++	reg32_write(0x3c1003f4,0xf);
++	reg32_write(0x3c040044,0x1);
++	reg32_write(0x3c040048,0x1);
++	reg32_write(0x3c04004c,0x180);
++	reg32_write(0x3c040060,0x1);
++	reg32_write(0x3c040008,0x6209);
++	reg32_write(0x3c0402c8,0x1);
++	reg32_write(0x3c0406d0,0x1);
++	reg32_write(0x3c040ad0,0x1);
++	reg32_write(0x3c040ed0,0x1);
++	reg32_write(0x3c0412d0,0x1);
++	reg32_write(0x3c0416d0,0x1);
++	reg32_write(0x3c041ad0,0x1);
++	reg32_write(0x3c041ed0,0x1);
++	reg32_write(0x3c0422d0,0x1);
++	reg32_write(0x3c044044,0x1);
++	reg32_write(0x3c044048,0x1);
++	reg32_write(0x3c04404c,0x180);
++	reg32_write(0x3c044060,0x1);
++	reg32_write(0x3c044008,0x6209);
++	reg32_write(0x3c0442c8,0x1);
++	reg32_write(0x3c0446d0,0x1);
++	reg32_write(0x3c044ad0,0x1);
++	reg32_write(0x3c044ed0,0x1);
++	reg32_write(0x3c0452d0,0x1);
++	reg32_write(0x3c0456d0,0x1);
++	reg32_write(0x3c045ad0,0x1);
++	reg32_write(0x3c045ed0,0x1);
++	reg32_write(0x3c0462d0,0x1);
++	reg32_write(0x3c048044,0x1);
++	reg32_write(0x3c048048,0x1);
++	reg32_write(0x3c04804c,0x180);
++	reg32_write(0x3c048060,0x1);
++	reg32_write(0x3c048008,0x6209);
++	reg32_write(0x3c0482c8,0x1);
++	reg32_write(0x3c0486d0,0x1);
++	reg32_write(0x3c048ad0,0x1);
++	reg32_write(0x3c048ed0,0x1);
++	reg32_write(0x3c0492d0,0x1);
++	reg32_write(0x3c0496d0,0x1);
++	reg32_write(0x3c049ad0,0x1);
++	reg32_write(0x3c049ed0,0x1);
++	reg32_write(0x3c04a2d0,0x1);
++	reg32_write(0x3c04c044,0x1);
++	reg32_write(0x3c04c048,0x1);
++	reg32_write(0x3c04c04c,0x180);
++	reg32_write(0x3c04c060,0x1);
++	reg32_write(0x3c04c008,0x6209);
++	reg32_write(0x3c04c2c8,0x1);
++	reg32_write(0x3c04c6d0,0x1);
++	reg32_write(0x3c04cad0,0x1);
++	reg32_write(0x3c04ced0,0x1);
++	reg32_write(0x3c04d2d0,0x1);
++	reg32_write(0x3c04d6d0,0x1);
++	reg32_write(0x3c04dad0,0x1);
++	reg32_write(0x3c04ded0,0x1);
++	reg32_write(0x3c04e2d0,0x1);
++	reg32_write(0x3c0800e8,0x2);
++	reg32_write(0x3c300200,0x2);
++	//customer Post Train
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x00020010, 0x0000006a);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x0002001d, 0x00000001);
++	/*
++	 * CalBusy.0 =1, indicates the calibrator is actively calibrating.
++	 * Wait Calibrating done.
++	 */
++	tmp_t = 1;
++	while(tmp_t) {
++		tmp = reg32_read(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x20097);
++		tmp_t = tmp & 0x01;
++	}
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0xd0000, 0x0);
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0x2006e, 0x0);
++	//disable APB bus to access DDRPHY RAM
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + 4 * 0xd0000, 0x1);
++}
+diff --git a/board/compulab/cl-som-imx8/ddr/helper.c b/board/compulab/cl-som-imx8/ddr/helper.c
+new file mode 100644
+index 0000000..83bc696
+--- /dev/null
++++ b/board/compulab/cl-som-imx8/ddr/helper.c
+@@ -0,0 +1,100 @@
++/*
++ * Copyright 2017 NXP
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#include <common.h>
++#include <spl.h>
++#include <asm/io.h>
++#include <errno.h>
++#include <asm/io.h>
++#include <asm/arch/ddr_memory_map.h>
++#include <asm/sections.h>
++
++DECLARE_GLOBAL_DATA_PTR;
++
++#define IMEM_LEN 32768//23400	//byte
++#define DMEM_LEN 16384//1720	//byte
++
++#define IMEM_OFFSET_ADDR 0x00050000
++#define DMEM_OFFSET_ADDR 0x00054000
++#define DDR_TRAIN_CODE_BASE_ADDR IP2APB_DDRPHY_IPS_BASE_ADDR(0)
++
++/* We need PHY iMEM PHY is 32KB padded */
++void ddr4_load_train_code(void)
++{
++	u32 tmp32, i;
++	u32 error = 0;
++	unsigned long pr_to32, pr_from32;
++	unsigned long imem_start = (unsigned long)&_end;
++	unsigned long dmem_start = imem_start + IMEM_LEN;
++
++	pr_from32 = imem_start;
++	pr_to32 = DDR_TRAIN_CODE_BASE_ADDR + 4 * IMEM_OFFSET_ADDR;
++	for(i = 0x0; i < IMEM_LEN; ){
++		tmp32 = readl(pr_from32);
++		writew(tmp32 & 0x0000ffff, pr_to32);
++		pr_to32 += 4;
++		writew((tmp32 >> 16) & 0x0000ffff, pr_to32);
++		pr_to32 += 4;
++		pr_from32 += 4;
++		i += 4;
++	}
++
++	pr_from32 = dmem_start;
++	pr_to32 = DDR_TRAIN_CODE_BASE_ADDR + 4 * DMEM_OFFSET_ADDR;
++	for(i = 0x0; i < DMEM_LEN;){
++		tmp32 = readl(pr_from32);
++		writew(tmp32 & 0x0000ffff, pr_to32);
++		pr_to32 += 4;
++		writew((tmp32 >> 16) & 0x0000ffff, pr_to32);
++		pr_to32 += 4;
++		pr_from32 += 4;
++		i += 4;
++	}
++
++	printf("check ddr4_pmu_train_imem code\n");
++	pr_from32 = imem_start;
++	pr_to32 = DDR_TRAIN_CODE_BASE_ADDR + 4 * IMEM_OFFSET_ADDR;
++	for(i = 0x0; i < IMEM_LEN;){
++		tmp32 = (readw(pr_to32) & 0x0000ffff);
++		pr_to32 += 4;
++		tmp32 += ((readw(pr_to32) & 0x0000ffff) << 16);
++
++		if(tmp32 != readl(pr_from32)){
++			printf("%lx %lx\n", pr_from32, pr_to32);
++			error++;
++		}
++		pr_from32 += 4;
++		pr_to32 += 4;
++		i += 4;
++	}
++	if(error){
++		printf("check ddr4_pmu_train_imem code fail=%d\n",error);
++	}else{
++		printf("check ddr4_pmu_train_imem code pass\n");
++	}
++
++	printf("check ddr4_pmu_train_dmem code\n");
++	pr_from32 = dmem_start;
++	pr_to32 = DDR_TRAIN_CODE_BASE_ADDR + 4 * DMEM_OFFSET_ADDR;
++	for(i = 0x0; i < DMEM_LEN;){
++		tmp32 = (readw(pr_to32) & 0x0000ffff);
++		pr_to32 += 4;
++		tmp32 += ((readw(pr_to32) & 0x0000ffff) << 16);
++		if(tmp32 != readl(pr_from32)){
++			printf("%lx %lx\n", pr_from32, pr_to32);
++			error++;
++		}
++		pr_from32 += 4;
++		pr_to32 += 4;
++		i += 4;
++	}
++
++	if(error){
++		printf("check ddr4_pmu_train_dmem code fail=%d",error);
++	}else{
++		printf("check ddr4_pmu_train_dmem code pass\n");
++	}
++}
+diff --git a/board/compulab/cl-som-imx8/ddr/wait_ddrphy_training_complete.c b/board/compulab/cl-som-imx8/ddr/wait_ddrphy_training_complete.c
+new file mode 100644
+index 0000000..0b42e58
+--- /dev/null
++++ b/board/compulab/cl-som-imx8/ddr/wait_ddrphy_training_complete.c
+@@ -0,0 +1,96 @@
++/*
++ * Copyright 2017 NXP
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++static inline void poll_pmu_message_ready(void)
++{
++	unsigned int reg;
++
++	do {
++		reg = reg32_read(IP2APB_DDRPHY_IPS_BASE_ADDR(0)+4*0xd0004);
++	} while (reg & 0x1);
++}
++
++static inline void ack_pmu_message_recieve(void)
++{
++	unsigned int reg;
++
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0)+4*0xd0031,0x0);
++
++	do {
++		reg = reg32_read(IP2APB_DDRPHY_IPS_BASE_ADDR(0)+4*0xd0004);
++	} while (!(reg & 0x1));
++
++	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0)+4*0xd0031,0x1);
++}
++
++static inline unsigned int get_mail(void)
++{
++	unsigned int reg;
++
++	poll_pmu_message_ready();
++
++	reg = reg32_read(IP2APB_DDRPHY_IPS_BASE_ADDR(0)+4*0xd0032);
++
++	ack_pmu_message_recieve();
++
++	return reg;
++}
++
++static inline unsigned int get_stream_message(void)
++{
++	unsigned int reg, reg2;
++
++	poll_pmu_message_ready();
++
++	reg = reg32_read(IP2APB_DDRPHY_IPS_BASE_ADDR(0)+4*0xd0032);
++
++	reg2 = reg32_read(IP2APB_DDRPHY_IPS_BASE_ADDR(0)+4*0xd0034);
++
++	reg2 = (reg2 << 16) | reg;
++
++	ack_pmu_message_recieve();
++
++	return reg2;
++}
++
++static inline void decode_major_message(unsigned int mail)
++{
++	ddr_printf("[PMU Major message = 0x%08x]\n", mail);
++}
++
++static inline void decode_streaming_message(void)
++{
++	unsigned int string_index, arg __maybe_unused;
++	int i = 0;
++
++	string_index = get_stream_message();
++	ddr_printf("	PMU String index = 0x%08x\n", string_index);
++	while (i < (string_index & 0xffff)){
++		arg = get_stream_message();
++		ddr_printf("	arg[%d] = 0x%08x\n", i, arg);
++		i++;
++	}
++
++	ddr_printf("\n");
++}
++
++void wait_ddrphy_training_complete(void)
++{
++	unsigned int mail;
++	while (1) {
++		mail = get_mail();
++		decode_major_message(mail);
++		if (mail == 0x08) {
++			decode_streaming_message();
++		} else if (mail == 0x07) {
++			printf("Training PASS\n");
++			break;
++		} else if (mail == 0xff) {
++			printf("Training FAILED\n");
++			break;
++		}
++	}
++}
+diff --git a/board/compulab/cl-som-imx8/spl.c b/board/compulab/cl-som-imx8/spl.c
+new file mode 100644
+index 0000000..6ce877f
+--- /dev/null
++++ b/board/compulab/cl-som-imx8/spl.c
+@@ -0,0 +1,241 @@
++/*
++ * Copyright 2017 NXP
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#include <common.h>
++#include <spl.h>
++#include <asm/io.h>
++#include <errno.h>
++#include <asm/io.h>
++#include <asm/imx-common/iomux-v3.h>
++#include <asm/arch/ddr_memory_map.h>
++#include <asm/arch/imx8mq_pins.h>
++#include <asm/arch/sys_proto.h>
++#include <power/pmic.h>
++#include <power/pfuze100_pmic.h>
++#include "../common/pfuze.h"
++#include <asm/arch/clock.h>
++#include <asm/imx-common/gpio.h>
++#include <asm/imx-common/mxc_i2c.h>
++#include <fsl_esdhc.h>
++#include <mmc.h>
++#include "ddr/ddr.h"
++#include "common.h"
++
++DECLARE_GLOBAL_DATA_PTR;
++
++void spl_dram_init(void)
++{
++	/* ddr init */
++	ddr_init();
++}
++
++#define I2C_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_HYS | PAD_CTL_PUE)
++#define PC MUX_PAD_CTRL(I2C_PAD_CTRL)
++struct i2c_pads_info i2c_pad_info1 = {
++	.scl = {
++		.i2c_mode = IMX8MQ_PAD_I2C2_SCL__I2C2_SCL | PC,
++		.gpio_mode = IMX8MQ_PAD_I2C2_SCL__GPIO5_IO16 | PC,
++		.gp = IMX_GPIO_NR(5, 16),
++	},
++	.sda = {
++		.i2c_mode = IMX8MQ_PAD_I2C2_SDA__I2C2_SDA | PC,
++		.gpio_mode = IMX8MQ_PAD_I2C2_SDA__GPIO5_IO17 | PC,
++		.gp = IMX_GPIO_NR(5, 17),
++	},
++};
++
++#define USDHC2_CD_GPIO	IMX_GPIO_NR(2, 12)
++#define USDHC1_PWR_GPIO IMX_GPIO_NR(2, 10)
++#define USDHC2_PWR_GPIO IMX_GPIO_NR(2, 19)
++
++int board_mmc_getcd(struct mmc *mmc)
++{
++	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
++	int ret = 0;
++
++	switch (cfg->esdhc_base) {
++	case USDHC1_BASE_ADDR:
++		ret = 1;
++		break;
++	case USDHC2_BASE_ADDR:
++		ret = !gpio_get_value(USDHC2_CD_GPIO);
++		return ret;
++	}
++
++	return 1;
++}
++
++#define USDHC_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_HYS | PAD_CTL_PUE | \
++			 PAD_CTL_FSEL2)
++
++static iomux_v3_cfg_t const usdhc1_pads[] = {
++	IMX8MQ_PAD_SD1_CLK__USDHC1_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
++	IMX8MQ_PAD_SD1_CMD__USDHC1_CMD | MUX_PAD_CTRL(USDHC_PAD_CTRL),
++	IMX8MQ_PAD_SD1_DATA0__USDHC1_DATA0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
++	IMX8MQ_PAD_SD1_DATA1__USDHC1_DATA1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
++	IMX8MQ_PAD_SD1_DATA2__USDHC1_DATA2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
++	IMX8MQ_PAD_SD1_DATA3__USDHC1_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
++	IMX8MQ_PAD_SD1_DATA4__USDHC1_DATA4 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
++	IMX8MQ_PAD_SD1_DATA5__USDHC1_DATA5 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
++	IMX8MQ_PAD_SD1_DATA6__USDHC1_DATA6 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
++	IMX8MQ_PAD_SD1_DATA7__USDHC1_DATA7 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
++	IMX8MQ_PAD_SD1_RESET_B__GPIO2_IO10 | MUX_PAD_CTRL(NO_PAD_CTRL),
++};
++
++static iomux_v3_cfg_t const usdhc2_pads[] = {
++	IMX8MQ_PAD_SD2_CLK__USDHC2_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL), /* 0xd6 */
++	IMX8MQ_PAD_SD2_CMD__USDHC2_CMD | MUX_PAD_CTRL(USDHC_PAD_CTRL), /* 0xd6 */
++	IMX8MQ_PAD_SD2_DATA0__USDHC2_DATA0 | MUX_PAD_CTRL(USDHC_PAD_CTRL), /* 0xd6 */
++	IMX8MQ_PAD_SD2_DATA1__USDHC2_DATA1 | MUX_PAD_CTRL(USDHC_PAD_CTRL), /* 0xd6 */
++	IMX8MQ_PAD_SD2_DATA2__USDHC2_DATA2 | MUX_PAD_CTRL(USDHC_PAD_CTRL), /* 0x16 */
++	IMX8MQ_PAD_SD2_DATA3__USDHC2_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL), /* 0xd6 */
++	IMX8MQ_PAD_SD2_CD_B__GPIO2_IO12 | MUX_PAD_CTRL(NO_PAD_CTRL),
++	IMX8MQ_PAD_SD2_RESET_B__GPIO2_IO19 | MUX_PAD_CTRL(NO_PAD_CTRL),
++};
++
++static struct fsl_esdhc_cfg usdhc_cfg[2] = {
++	{USDHC1_BASE_ADDR, 0, 8},
++	{USDHC2_BASE_ADDR, 0, 4},
++};
++
++int board_mmc_init(bd_t *bis)
++{
++	int i, ret;
++	/*
++	 * According to the board_mmc_init() the following map is done:
++	 * (U-Boot device node)    (Physical Port)
++	 * mmc0                    USDHC1
++	 * mmc1                    USDHC2
++	 */
++	for (i = 0; i < CONFIG_SYS_FSL_USDHC_NUM; i++) {
++		switch (i) {
++		case 0:
++			usdhc_cfg[0].sdhc_clk = mxc_get_clock(USDHC1_CLK_ROOT);
++			imx_iomux_v3_setup_multiple_pads(
++				usdhc1_pads, ARRAY_SIZE(usdhc1_pads));
++			gpio_request(USDHC1_PWR_GPIO, "usdhc1_reset");
++			gpio_direction_output(USDHC1_PWR_GPIO, 0);
++			udelay(500);
++			gpio_direction_output(USDHC1_PWR_GPIO, 1);
++			break;
++		case 1:
++			usdhc_cfg[1].sdhc_clk = mxc_get_clock(USDHC2_CLK_ROOT);
++			imx_iomux_v3_setup_multiple_pads(
++				usdhc2_pads, ARRAY_SIZE(usdhc2_pads));
++			gpio_request(USDHC2_PWR_GPIO, "usdhc2_reset");
++			gpio_direction_output(USDHC2_PWR_GPIO, 0);
++			udelay(500);
++			gpio_direction_output(USDHC2_PWR_GPIO, 1);
++			break;
++		default:
++			printf("Warning: you configured more USDHC controllers"
++				"(%d) than supported by the board\n", i + 1);
++			return -EINVAL;
++		}
++
++		ret = fsl_esdhc_initialize(bis, &usdhc_cfg[i]);
++		if (ret)
++			return ret;
++	}
++
++	return 0;
++}
++
++#ifdef CONFIG_POWER
++#define I2C_PMIC	1
++int power_init_board(void)
++{
++	struct pmic *p;
++	int ret;
++	unsigned int reg;
++
++	ret = power_pfuze100_init(I2C_PMIC);
++	if (ret)
++		return -ENODEV;
++
++	p = pmic_get("PFUZE100");
++	ret = pmic_probe(p);
++	if (ret)
++		return -ENODEV;
++
++	pmic_reg_read(p, PFUZE100_DEVICEID, &reg);
++	printf("PMIC:  PFUZE100 ID=0x%02x\n", reg);
++
++	pmic_reg_read(p, PFUZE100_SW3AVOL, &reg);
++	if ((reg & 0x3f) != 0x18) {
++		reg &= ~0x3f;
++		reg |= 0x18;
++		pmic_reg_write(p, PFUZE100_SW3AVOL, reg);
++	}
++
++	ret = pfuze_mode_init(p, APS_PFM);
++	if (ret < 0)
++		return ret;
++
++	return 0;
++}
++#endif
++
++void spl_board_init(void)
++{
++	enable_tzc380();
++
++	/* Adjust pmic voltage to 1.0V for 800M */
++	setup_i2c(1, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info1);
++
++	power_init_board();
++
++	/* DDR initialization */
++	spl_dram_init();
++
++#ifdef CONFIG_MXC_SPI
++	board_ecspi_init();
++#endif
++
++	/* Serial download mode */
++	if (is_usb_boot()) {
++		puts("Back to ROM, SDP\n");
++		restore_boot_params();
++	}
++	puts("Normal Boot\n");
++}
++
++void board_init_f(ulong dummy)
++{
++	/* Clear global data */
++	memset((void *)gd, 0, sizeof(gd_t));
++
++	arch_cpu_init();
++
++	board_early_init_f();
++
++	timer_init();
++
++	preloader_console_init();
++
++	/* Clear the BSS. */
++	memset(__bss_start, 0, __bss_end - __bss_start);
++
++	board_init_r(NULL, 0);
++}
++
++void board_boot_order(u32 *spl_boot_list)
++{
++	spl_boot_list[0] = spl_boot_device();
++	switch (spl_boot_list[0]) {
++	case BOOT_DEVICE_MMC1:
++		printf("SPL Boot Device: MMC1\n");
++		spl_boot_list[1] = BOOT_DEVICE_MMC2;
++		break;
++	case BOOT_DEVICE_MMC2:
++		printf("SPL Boot Device: MMC2\n");
++		spl_boot_list[1] = BOOT_DEVICE_MMC1;
++		break;
++	default:
++		printf("SPL Boot Device: # %d; no 2-nd boot device\n", spl_boot_list[0]);
++		break;
++	}
++}
+diff --git a/board/compulab/common/Makefile b/board/compulab/common/Makefile
+index 286f327..f92605e 100644
+--- a/board/compulab/common/Makefile
++++ b/board/compulab/common/Makefile
+@@ -7,6 +7,10 @@
+ #
+ 
+ obj-y				+= common.o
++obj-y				+= mmc.o
+ obj-$(CONFIG_SYS_I2C)		+= eeprom.o
+ obj-$(CONFIG_LCD)		+= omap3_display.o
+ obj-$(CONFIG_SMC911X)		+= omap3_smc911x.o
++
++obj-$(CONFIG_POWER_PFUZE100)	+= pfuze.o
++obj-$(CONFIG_$(SPL_)DM_PMIC_PFUZE100)	+= pfuze_dm.o
+diff --git a/board/compulab/common/mmc.c b/board/compulab/common/mmc.c
+new file mode 100644
+index 0000000..20eaab6
+--- /dev/null
++++ b/board/compulab/common/mmc.c
+@@ -0,0 +1,48 @@
++/*
++ * Copyright (C) 2016 Freescale Semiconductor, Inc.
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++#include <common.h>
++#include <asm/arch/sys_proto.h>
++#include <linux/errno.h>
++#include <asm/io.h>
++#include <stdbool.h>
++
++static int check_mmc_autodetect(void)
++{
++	char *autodetect_str = getenv("mmcautodetect");
++
++	if ((autodetect_str != NULL) &&
++		(strcmp(autodetect_str, "yes") == 0)) {
++		return 1;
++	}
++
++	return 0;
++}
++
++/* This should be defined for each board */
++__weak int mmc_map_to_kernel_blk(int dev_no)
++{
++	return dev_no;
++}
++
++void board_late_mmc_env_init(void)
++{
++	char cmd[32];
++	char mmcblk[32];
++	u32 dev_no = mmc_get_env_dev();
++
++	if (!check_mmc_autodetect())
++		return;
++
++	setenv_ulong("mmcdev", dev_no);
++
++	/* Set mmcblk env */
++	sprintf(mmcblk, "/dev/mmcblk%dp2 rootwait rw",
++		mmc_map_to_kernel_blk(dev_no));
++	setenv("mmcroot", mmcblk);
++
++	sprintf(cmd, "mmc dev %d", dev_no);
++	run_command(cmd, 0);
++}
+diff --git a/board/compulab/common/pfuze.c b/board/compulab/common/pfuze.c
+new file mode 100644
+index 0000000..2a34b0e
+--- /dev/null
++++ b/board/compulab/common/pfuze.c
+@@ -0,0 +1,93 @@
++/*
++ * (C) Copyright 2011 - 2017 CompuLab, Ltd. <www.compulab.co.il>
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#include <common.h>
++#include <errno.h>
++#include <power/pmic.h>
++#include <power/pfuze100_pmic.h>
++
++int pfuze_mode_init(struct pmic *p, u32 mode)
++{
++	unsigned char offset, i, switch_num;
++	u32 id;
++	int ret;
++
++	pmic_reg_read(p, PFUZE100_DEVICEID, &id);
++	id = id & 0xf;
++
++	if (id == 0) {
++		switch_num = 6;
++		offset = PFUZE100_SW1CMODE;
++	} else if (id == 1) {
++		switch_num = 4;
++		offset = PFUZE100_SW2MODE;
++	} else {
++		printf("Not supported, id=%d\n", id);
++		return -EINVAL;
++	}
++
++	ret = pmic_reg_write(p, PFUZE100_SW1ABMODE, mode);
++	if (ret < 0) {
++		printf("Set SW1AB mode error!\n");
++		return ret;
++	}
++
++	for (i = 0; i < switch_num - 1; i++) {
++		ret = pmic_reg_write(p, offset + i * SWITCH_SIZE, mode);
++		if (ret < 0) {
++			printf("Set switch 0x%x mode error!\n",
++			       offset + i * SWITCH_SIZE);
++			return ret;
++		}
++	}
++
++	return ret;
++}
++
++struct pmic *pfuze_common_init(unsigned char i2cbus)
++{
++	struct pmic *p;
++	int ret;
++	unsigned int reg;
++
++	ret = power_pfuze100_init(i2cbus);
++	if (ret)
++		return NULL;
++
++	p = pmic_get("PFUZE100");
++	ret = pmic_probe(p);
++	if (ret)
++		return NULL;
++
++	pmic_reg_read(p, PFUZE100_DEVICEID, &reg);
++	printf("PMIC:  PFUZE100 ID=0x%02x\n", reg);
++
++	/* Set SW1AB stanby volage to 0.975V */
++	pmic_reg_read(p, PFUZE100_SW1ABSTBY, &reg);
++	reg &= ~SW1x_STBY_MASK;
++	reg |= SW1x_0_975V;
++	pmic_reg_write(p, PFUZE100_SW1ABSTBY, reg);
++
++	/* Set SW1AB/VDDARM step ramp up time from 16us to 4us/25mV */
++	pmic_reg_read(p, PFUZE100_SW1ABCONF, &reg);
++	reg &= ~SW1xCONF_DVSSPEED_MASK;
++	reg |= SW1xCONF_DVSSPEED_4US;
++	pmic_reg_write(p, PFUZE100_SW1ABCONF, reg);
++
++	/* Set SW1C standby voltage to 0.975V */
++	pmic_reg_read(p, PFUZE100_SW1CSTBY, &reg);
++	reg &= ~SW1x_STBY_MASK;
++	reg |= SW1x_0_975V;
++	pmic_reg_write(p, PFUZE100_SW1CSTBY, reg);
++
++	/* Set SW1C/VDDSOC step ramp up time from 16us to 4us/25mV */
++	pmic_reg_read(p, PFUZE100_SW1CCONF, &reg);
++	reg &= ~SW1xCONF_DVSSPEED_MASK;
++	reg |= SW1xCONF_DVSSPEED_4US;
++	pmic_reg_write(p, PFUZE100_SW1CCONF, reg);
++
++	return p;
++}
+diff --git a/board/compulab/common/pfuze.h b/board/compulab/common/pfuze.h
+new file mode 100644
+index 0000000..32a327c
+--- /dev/null
++++ b/board/compulab/common/pfuze.h
+@@ -0,0 +1,19 @@
++/*
++ * (C) Copyright 2011 - 2017 CompuLab, Ltd. <www.compulab.co.il>
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#ifndef __PFUZE_BOARD_HELPER__
++#define __PFUZE_BOARD_HELPER__
++
++#ifdef CONFIG_DM_PMIC_PFUZE100
++struct udevice *pfuze_common_init(void);
++int pfuze_mode_init(struct udevice *dev, u32 mode);
++
++#elif defined(CONFIG_POWER_PFUZE100)
++struct pmic *pfuze_common_init(unsigned char i2cbus);
++int pfuze_mode_init(struct pmic *p, u32 mode);
++#endif
++
++#endif
+diff --git a/board/compulab/common/pfuze_dm.c b/board/compulab/common/pfuze_dm.c
+new file mode 100644
+index 0000000..5469d38
+--- /dev/null
++++ b/board/compulab/common/pfuze_dm.c
+@@ -0,0 +1,89 @@
++/*
++ * (C) Copyright 2011 - 2017 CompuLab, Ltd. <www.compulab.co.il>
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#include <common.h>
++#include <errno.h>
++#include <power/pmic.h>
++#include <power/pfuze100_pmic.h>
++
++int pfuze_mode_init(struct udevice *dev, u32 mode)
++{
++	unsigned char offset, i, switch_num;
++	u32 id;
++	int ret;
++
++	id = pmic_reg_read(dev, PFUZE100_DEVICEID);
++	id = id & 0xf;
++
++	if (id == 0) {
++		switch_num = 6;
++		offset = PFUZE100_SW1CMODE;
++	} else if (id == 1) {
++		switch_num = 4;
++		offset = PFUZE100_SW2MODE;
++	} else {
++		printf("Not supported, id=%d\n", id);
++		return -EINVAL;
++	}
++
++	ret = pmic_reg_write(dev, PFUZE100_SW1ABMODE, mode);
++	if (ret < 0) {
++		printf("Set SW1AB mode error!\n");
++		return ret;
++	}
++
++	for (i = 0; i < switch_num - 1; i++) {
++		ret = pmic_reg_write(dev, offset + i * SWITCH_SIZE, mode);
++		if (ret < 0) {
++			printf("Set switch 0x%x mode error!\n",
++			       offset + i * SWITCH_SIZE);
++			return ret;
++		}
++	}
++
++	return ret;
++}
++
++struct udevice *pfuze_common_init(void)
++{
++	struct udevice *dev;
++	int ret;
++	unsigned int reg, dev_id, rev_id;
++
++	ret = pmic_get("pfuze100", &dev);
++	if (ret == -ENODEV)
++		return NULL;
++
++	dev_id = pmic_reg_read(dev, PFUZE100_DEVICEID);
++	rev_id = pmic_reg_read(dev, PFUZE100_REVID);
++	printf("PMIC: PFUZE100! DEV_ID=0x%x REV_ID=0x%x\n", dev_id, rev_id);
++
++	/* Set SW1AB stanby volage to 0.975V */
++	reg = pmic_reg_read(dev, PFUZE100_SW1ABSTBY);
++	reg &= ~SW1x_STBY_MASK;
++	reg |= SW1x_0_975V;
++	pmic_reg_write(dev, PFUZE100_SW1ABSTBY, reg);
++
++	/* Set SW1AB/VDDARM step ramp up time from 16us to 4us/25mV */
++	reg = pmic_reg_read(dev, PFUZE100_SW1ABCONF);
++	reg &= ~SW1xCONF_DVSSPEED_MASK;
++	reg |= SW1xCONF_DVSSPEED_4US;
++	pmic_reg_write(dev, PFUZE100_SW1ABCONF, reg);
++
++	/* Set SW1C standby voltage to 0.975V */
++	reg = pmic_reg_read(dev, PFUZE100_SW1CSTBY);
++	reg &= ~SW1x_STBY_MASK;
++	reg |= SW1x_0_975V;
++	pmic_reg_write(dev, PFUZE100_SW1CSTBY, reg);
++
++	/* Set SW1C/VDDSOC step ramp up time from 16us to 4us/25mV */
++	reg = pmic_reg_read(dev, PFUZE100_SW1CCONF);
++	reg &= ~SW1xCONF_DVSSPEED_MASK;
++	reg |= SW1xCONF_DVSSPEED_4US;
++	pmic_reg_write(dev, PFUZE100_SW1CCONF, reg);
++
++	return dev;
++}
+diff --git a/configs/cl-som-imx8_defconfig b/configs/cl-som-imx8_defconfig
+new file mode 100644
+index 0000000..bc1cecc
+--- /dev/null
++++ b/configs/cl-som-imx8_defconfig
+@@ -0,0 +1,33 @@
++CONFIG_ARM=y
++CONFIG_ARCH_IMX8M=y
++CONFIG_SYS_MALLOC_F_LEN=0x2000
++CONFIG_TARGET_CL_SOM_IMX8=y
++CONFIG_DEFAULT_DEVICE_TREE="cl-som-imx8"
++CONFIG_SYS_EXTRA_OPTIONS="IMX_CONFIG=arch/arm/imx-common/spl_sd.cfg"
++CONFIG_SPL=y
++CONFIG_HUSH_PARSER=y
++CONFIG_CMD_BOOTZ=y
++CONFIG_CMD_I2C=y
++CONFIG_CMD_GPIO=y
++CONFIG_CMD_CACHE=y
++CONFIG_CMD_PMIC=y
++CONFIG_CMD_REGULATOR=y
++CONFIG_CMD_FS_GENERIC=y
++CONFIG_OF_CONTROL=y
++# CONFIG_BLK is not set
++CONFIG_DM_GPIO=y
++CONFIG_DM_I2C=y
++CONFIG_SYS_I2C_MXC=y
++CONFIG_DM_MMC=y
++# CONFIG_DM_MMC_OPS is not set
++CONFIG_DM_ETH=y
++CONFIG_PINCTRL=y
++CONFIG_PINCTRL_IMX8M=y
++CONFIG_DM_PMIC=y
++CONFIG_DM_PMIC_PFUZE100=y
++CONFIG_DM_REGULATOR=y
++CONFIG_DM_REGULATOR_PFUZE100=y
++CONFIG_DM_REGULATOR_FIXED=y
++CONFIG_DM_REGULATOR_GPIO=y
++CONFIG_DM_THERMAL=y
++CONFIG_NXP_TMU=y
+diff --git a/include/configs/cl-som-imx8.h b/include/configs/cl-som-imx8.h
+new file mode 100644
+index 0000000..a11a88a
+--- /dev/null
++++ b/include/configs/cl-som-imx8.h
+@@ -0,0 +1,304 @@
++/*
++ * Copyright 2017 NXP
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#ifndef __CL_SOM_IMX8_H
++#define __CL_SOM_IMX8_H
++
++#include <linux/sizes.h>
++#include <asm/arch/imx-regs.h>
++
++#define CONFIG_SPL_FRAMEWORK
++#define CONFIG_SPL_TEXT_BASE		0x7E1000
++#define CONFIG_SPL_MAX_SIZE		(124 * 1024)
++#define CONFIG_SYS_MONITOR_LEN		(512 * 1024)
++#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_USE_SECTOR
++#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR	0x300
++#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	1
++
++#ifdef CONFIG_SPL_BUILD
++/*#define CONFIG_ENABLE_DDR_TRAINING_DEBUG*/
++#define CONFIG_SPL_WATCHDOG_SUPPORT
++#define CONFIG_SPL_POWER_SUPPORT
++#define CONFIG_SPL_I2C_SUPPORT
++#define CONFIG_SPL_BOARD_INIT
++#define CONFIG_SPL_LDSCRIPT		"arch/arm/cpu/armv8/u-boot-spl.lds"
++#define CONFIG_SPL_STACK		0x91FFF0
++#define CONFIG_SPL_LIBCOMMON_SUPPORT
++#define CONFIG_SPL_LIBGENERIC_SUPPORT
++#define CONFIG_SPL_SERIAL_SUPPORT
++#define CONFIG_SPL_GPIO_SUPPORT
++#define CONFIG_SPL_MMC_SUPPORT
++#define CONFIG_SPL_BSS_START_ADDR      0x00912000
++#define CONFIG_SPL_BSS_MAX_SIZE        0x2000	/* 8 KB */
++#define CONFIG_SYS_SPL_MALLOC_START    0x00914000
++#define CONFIG_SYS_SPL_MALLOC_SIZE     0x2000	/* 8 KB */
++#define CONFIG_SYS_ICACHE_OFF
++#define CONFIG_SYS_DCACHE_OFF
++
++#define CONFIG_SPL_ABORT_ON_RAW_IMAGE /* For RAW image gives a error info not panic */
++
++#undef CONFIG_DM_MMC
++#undef CONFIG_DM_PMIC
++#undef CONFIG_DM_PMIC_PFUZE100
++
++#define CONFIG_SYS_I2C
++#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
++#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
++#define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
++
++#define CONFIG_POWER
++#define CONFIG_POWER_I2C
++#define CONFIG_POWER_PFUZE100
++#define CONFIG_POWER_PFUZE100_I2C_ADDR 0x08
++#endif
++
++#define CONFIG_REMAKE_ELF
++
++#define CONFIG_BOARD_EARLY_INIT_F
++#define CONFIG_BOARD_POSTCLK_INIT
++#define CONFIG_BOARD_LATE_INIT
++
++/* Flat Device Tree Definitions */
++#define CONFIG_OF_BOARD_SETUP
++
++#undef CONFIG_CMD_EXPORTENV
++#undef CONFIG_CMD_IMPORTENV
++#undef CONFIG_CMD_IMLS
++
++#undef CONFIG_CMD_CRC32
++#undef CONFIG_BOOTM_NETBSD
++
++/* ENET Config */
++/* ENET1 */
++#if defined(CONFIG_CMD_NET)
++#define CONFIG_CMD_PING
++#define CONFIG_CMD_DHCP
++#define CONFIG_CMD_MII
++#define CONFIG_MII
++#define CONFIG_ETHPRIME                 "FEC"
++
++#define CONFIG_FEC_MXC
++#define CONFIG_FEC_XCV_TYPE             RGMII
++#define CONFIG_FEC_MXC_PHYADDR          0
++#define FEC_QUIRK_ENET_MAC
++
++#define CONFIG_PHY_GIGE
++#define IMX_FEC_BASE			0x30BE0000
++
++#define CONFIG_PHYLIB
++#define CONFIG_PHY_ATHEROS
++#endif
++
++#define CONFIG_MFG_ENV_SETTINGS \
++	"mfgtool_args=setenv bootargs console=${console},${baudrate} " \
++		"rdinit=/linuxrc " \
++		"g_mass_storage.stall=0 g_mass_storage.removable=1 " \
++		"g_mass_storage.idVendor=0x066F g_mass_storage.idProduct=0x37FF "\
++		"g_mass_storage.iSerialNumber=\"\" "\
++		"clk_ignore_unused "\
++		"\0" \
++	"initrd_addr=0x43800000\0" \
++	"initrd_high=0xffffffff\0" \
++	"bootcmd_mfg=run mfgtool_args;booti ${loadaddr} ${initrd_addr} ${fdt_addr};\0" \
++/* Initial environment variables */
++#define CONFIG_EXTRA_ENV_SETTINGS		\
++	CONFIG_MFG_ENV_SETTINGS \
++	"script=boot.scr\0" \
++	"image=Image\0" \
++	"console=ttymxc2,115200 earlycon=ec_imx6q,0x30880000,115200\0" \
++	"fdt_addr=0x43000000\0"			\
++	"fdt_high=0xffffffffffffffff\0"		\
++	"boot_fdt=try\0" \
++	"fdt_file="CONFIG_SYS_BOARD".dtb\0" \
++	"initrd_addr=0x43800000\0"		\
++	"initrd_high=0xffffffffffffffff\0" \
++	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
++	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
++	"mmcautodetect=yes\0" \
++	"mmcargs=setenv bootargs console=${console} root=/dev/mmcblk${mmcdev}p2 rootwait rw\0 " \
++	"loadbootscript=load mmc ${mmcdev}:${mmcpart} ${loadaddr} ${script};\0" \
++	"bootscript=echo Running bootscript from mmc ...; " \
++		"source\0" \
++	"loadimage=load mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}\0" \
++	"loadfdt=load mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}\0" \
++	"mmcboot=echo Booting from mmc ...; " \
++		"run mmcargs; " \
++		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
++			"if run loadfdt; then " \
++				"booti ${loadaddr} - ${fdt_addr}; " \
++			"else " \
++				"echo WARN: Cannot load the DT; " \
++			"fi; " \
++		"else " \
++			"echo wait for boot; " \
++		"fi;\0" \
++	"autoload=off\0" \
++	"netargs=setenv bootargs console=${console} " \
++		"root=/dev/nfs " \
++		"ip=dhcp nfsroot=${serverip}:${nfsroot},v3,tcp\0" \
++	"netboot=echo Booting from net ...; " \
++		"run netargs;  " \
++		"if test ${ip_dyn} = yes; then " \
++			"setenv get_cmd dhcp; " \
++		"else " \
++			"setenv get_cmd tftp; " \
++		"fi; " \
++		"${get_cmd} ${loadaddr} ${image}; " \
++		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
++			"if ${get_cmd} ${fdt_addr} ${fdt_file}; then " \
++				"booti ${loadaddr} - ${fdt_addr}; " \
++			"else " \
++				"echo WARN: Cannot load the DT; " \
++			"fi; " \
++		"else " \
++			"booti; " \
++		"fi;\0"
++
++#define CONFIG_BOOTCOMMAND \
++	   "mmc dev ${mmcdev}; if mmc rescan; then " \
++		   "if run loadbootscript; then " \
++			   "run bootscript; " \
++		   "else " \
++			   "if run loadimage; then " \
++				   "run mmcboot; " \
++			   "else booti ${loadaddr} - ${fdt_addr}; " \
++			   "fi; " \
++		   "fi; " \
++	   "else booti ${loadaddr} - ${fdt_addr}; fi"
++
++/* Link Definitions */
++#define CONFIG_LOADADDR			0x40280000
++#define CONFIG_SYS_TEXT_BASE		0x40021000
++
++#define CONFIG_SYS_LOAD_ADDR           CONFIG_LOADADDR
++
++#define CONFIG_SYS_INIT_RAM_ADDR        0x912000
++#define CONFIG_SYS_INIT_RAM_SIZE        0xe000
++#define CONFIG_SYS_INIT_SP_OFFSET \
++        (CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
++#define CONFIG_SYS_INIT_SP_ADDR \
++        (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
++
++#define CONFIG_ENV_OVERWRITE
++#define CONFIG_ENV_OFFSET               (22 * SZ_64K)
++#define CONFIG_ENV_SIZE			SZ_64K
++#define CONFIG_SYS_MMC_ENV_DEV		0   /* USDHC1/eMMC */
++
++/* Size of malloc() pool */
++#define CONFIG_SYS_MALLOC_LEN		((CONFIG_ENV_SIZE + (2*1024)) * 1024)
++
++#define CONFIG_SYS_SDRAM_BASE           0x40000000
++#define PHYS_SDRAM                      0x40000000
++#define PHYS_SDRAM_SIZE			0x80000000 /* 2GB DDR */
++#define CONFIG_NR_DRAM_BANKS		1
++
++#define CONFIG_BAUDRATE			115200
++
++#define CONFIG_MXC_UART
++#define CONFIG_MXC_UART_BASE		UART3_BASE_ADDR
++
++/* Monitor Command Prompt */
++#undef CONFIG_SYS_PROMPT
++#define CONFIG_SYS_PROMPT		"u-boot=> "
++#define CONFIG_SYS_LONGHELP
++#define CONFIG_SYS_PROMPT_HUSH_PS2     "> "
++#define CONFIG_AUTO_COMPLETE
++#define CONFIG_SYS_CBSIZE              1024
++#define CONFIG_SYS_MAXARGS             64
++#define CONFIG_SYS_BARGSIZE CONFIG_SYS_CBSIZE
++#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
++					sizeof(CONFIG_SYS_PROMPT) + 16)
++#define CONFIG_CMDLINE_EDITING
++
++#define CONFIG_IMX_BOOTAUX
++
++#define CONFIG_CMD_MMC
++#define CONFIG_FSL_ESDHC
++#define CONFIG_FSL_USDHC
++
++#define CONFIG_SYS_FSL_USDHC_NUM	2
++#define CONFIG_SYS_FSL_ESDHC_ADDR       0
++
++#define CONFIG_DOS_PARTITION
++#define CONFIG_CMD_EXT2
++#define CONFIG_CMD_EXT4
++#define CONFIG_CMD_EXT4_WRITE
++#define CONFIG_CMD_FAT
++
++#define CONFIG_SUPPORT_EMMC_BOOT	/* eMMC specific */
++#define CONFIG_SYS_MMC_IMG_LOAD_PART	1
++
++#ifdef CONFIG_SPI_BOOT
++#define CONFIG_SPL_SPI_SUPPORT
++#define CONFIG_SPL_SPI_FLASH_SUPPORT
++#define CONFIG_SPI
++#define CONFIG_MXC_SPI
++#define CONFIG_CMD_SF
++#define CONFIG_SPI_FLASH
++#define CONFIG_SPI_FLASH_STMICRO
++#define CONFIG_SPI_FLASH_BAR
++#define CONFIG_SF_DEFAULT_BUS           0
++#define CONFIG_SF_DEFAULT_CS            0
++#define CONFIG_SF_DEFAULT_SPEED         40000000
++#define CONFIG_SF_DEFAULT_MODE          SPI_MODE_0
++#define CONFIG_SPL_SPI_LOAD
++#define CONFIG_SYS_SPI_U_BOOT_OFFS   (CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR * SZ_512)
++
++#define CONFIG_ENV_IS_IN_SPI_FLASH
++#define CONFIG_ENV_SECT_SIZE   (64 * 1024)
++#define CONFIG_ENV_SPI_BUS     CONFIG_SF_DEFAULT_BUS
++#define CONFIG_ENV_SPI_CS      CONFIG_SF_DEFAULT_CS
++#define CONFIG_ENV_SPI_MODE    CONFIG_SF_DEFAULT_MODE
++#define CONFIG_ENV_SPI_MAX_HZ  CONFIG_SF_DEFAULT_SPEED
++#else
++#define CONFIG_ENV_IS_IN_MMC
++#endif
++
++#define CONFIG_MXC_GPIO
++
++#define CONFIG_MXC_OCOTP
++#define CONFIG_CMD_FUSE
++
++/* I2C Configs */
++#define CONFIG_SYS_I2C_SPEED		  100000
++
++/* USB configs */
++#ifndef CONFIG_SPL_BUILD
++#define CONFIG_HAS_FSL_XHCI_USB
++
++#ifdef CONFIG_HAS_FSL_XHCI_USB
++#define CONFIG_USB_XHCI_IMX8M
++#define CONFIG_USB_XHCI_DWC3
++#define CONFIG_USB_XHCI_HCD
++#define CONFIG_USB_MAX_CONTROLLER_COUNT         1
++#define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS      2
++#endif
++
++#define CONFIG_CMD_USB
++#define CONFIG_USB_STORAGE
++#define CONFIG_CMD_EXT2
++
++#define CONFIG_USB_DWC3
++#define CONFIG_USB_DWC3_GADGET
++#define CONFIG_USBD_HS
++
++#define CONFIG_USB_GADGET
++#define CONFIG_CMD_USB_MASS_STORAGE
++#define CONFIG_USB_GADGET_MASS_STORAGE
++#define CONFIG_USB_GADGET_DOWNLOAD
++#define CONFIG_USB_GADGET_VBUS_DRAW 2
++#define CONFIG_USB_GADGET_DUALSPEED
++#define CONFIG_USB_FUNCTION_MASS_STORAGE
++
++#define CONFIG_G_DNL_VENDOR_NUM		0x0525
++#define CONFIG_G_DNL_PRODUCT_NUM	0xa4a5
++#define CONFIG_G_DNL_MANUFACTURER	"FSL"
++
++#endif
++
++#define CONFIG_OF_SYSTEM_SETUP
++
++#endif
+-- 
+1.9.1
+
