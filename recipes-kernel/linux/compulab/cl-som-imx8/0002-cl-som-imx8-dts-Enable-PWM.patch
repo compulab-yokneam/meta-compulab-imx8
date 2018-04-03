@@ -1,7 +1,7 @@
-From 91e94bb3bae78cb636d4b18ae933589fb835be28 Mon Sep 17 00:00:00 2001
+From 3c781ba0bd6e4d1bbc45ae719f352694ae087073 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 9 Nov 2017 10:23:36 +0200
-Subject: [PATCH 02/54] cl-som-imx8: dts: Enable PWM
+Subject: [PATCH 02/57] cl-som-imx8: dts: Enable PWM
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

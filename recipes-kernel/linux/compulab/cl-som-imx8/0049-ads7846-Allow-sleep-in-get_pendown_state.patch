@@ -1,0 +1,29 @@
+From 96ccfc77cdc6668f2fb095c085e7413edf9d04e0 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Tue, 30 Jan 2018 12:44:59 +0200
+Subject: [PATCH 49/57] ads7846: Allow sleep in get_pendown_state()
+
+get_pendown_state() make use of gpio_get_value_cansleep()
+The value gets read from an interrupt extender that connected through
+an i2c interface. In order to read the gpio value from the 'cansleep'
+interface must be invoked.
+---
+ drivers/input/touchscreen/ads7846.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/input/touchscreen/ads7846.c b/drivers/input/touchscreen/ads7846.c
+index fc21a74..6bc3372 100644
+--- a/drivers/input/touchscreen/ads7846.c
++++ b/drivers/input/touchscreen/ads7846.c
+@@ -610,7 +610,7 @@ static int get_pendown_state(struct ads7846 *ts)
+ 	if (ts->get_pendown_state)
+ 		return ts->get_pendown_state();
+ 
+-	return !gpio_get_value(ts->gpio_pendown);
++	return !gpio_get_value_cansleep(ts->gpio_pendown);
+ }
+ 
+ static void null_wait_for_sync(void)
+-- 
+1.9.1
+

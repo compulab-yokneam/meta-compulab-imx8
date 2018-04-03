@@ -1,7 +1,7 @@
-From dbbb94e68d3fb14fa7f0ea5d55d6b070c9adcc43 Mon Sep 17 00:00:00 2001
+From a8cec5590849b1a99678f464ecef6d179d782713 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 9 Nov 2017 16:36:27 +0200
-Subject: [PATCH 08/54] cl-som-imx8: dts: Enable analog sound card wm8731
+Subject: [PATCH 08/57] cl-som-imx8: dts: Enable analog sound card wm8731
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

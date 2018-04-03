@@ -1,7 +1,7 @@
-From 52f33cecb1c2988e2142d3c502c65e4e1169c05a Mon Sep 17 00:00:00 2001
+From 3bf27caad11db7417d108a7a65fa43a8770c48bb Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Mon, 13 Nov 2017 14:08:31 +0200
-Subject: [PATCH 11/54] cl-som-imx8: dts: Add 4K support
+Subject: [PATCH 11/57] cl-som-imx8: dts: Add 4K support
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

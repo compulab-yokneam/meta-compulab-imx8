@@ -1,7 +1,7 @@
-From 6d25553cecd8dab37ede5948bd2e9c339dd71774 Mon Sep 17 00:00:00 2001
+From dae43f1f598b2b79e8ef63ac5155e05066b2ed57 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
-Date: Sat, 11 Nov 2017 13:11:40 +0200
-Subject: [PATCH 10/57] cl-som-imx8: dts: Fix iomux section name
+Date: Mon, 29 Jan 2018 15:31:14 +0200
+Subject: [PATCH 41/57] cl-som-imx8: dts: Set a correct pwm2 iomux value
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---
@@ -9,18 +9,18 @@ Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
-index 591e380..eaf4323 100644
+index d3d68cb..94ba555 100644
 --- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
 +++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
-@@ -109,7 +109,7 @@
- &iomuxc {
- 	pinctrl-names = "default";
+@@ -208,7 +208,7 @@
  
--	imx8mq-evk {
-+	cl-som-imx8 {
- 		pinctrl_fec1: fec1grp {
+ 		pinctrl_pwm2: pwm2grp {
  			fsl,pins = <
- 				MX8MQ_IOMUXC_ENET_MDC_ENET1_MDC		0x3
+-				MX8MQ_IOMUXC_GPIO1_IO13_PWM2_OUT	0x16
++				MX8MQ_IOMUXC_I2C4_SCL_PWM2_OUT 		0x16
+ 			>;
+ 		};
+ 
 -- 
 1.9.1
 

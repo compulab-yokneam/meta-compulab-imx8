@@ -1,7 +1,7 @@
-From f756c390e2410870003eee73d6f86914c86404a6 Mon Sep 17 00:00:00 2001
+From c22b068bd3cb8b215d83a574475d0cc22a9ec649 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 9 Nov 2017 16:00:11 +0200
-Subject: [PATCH 06/54] cl-som-imx8: dts: Enable i2c2 rtc@56
+Subject: [PATCH 06/57] cl-som-imx8: dts: Enable i2c2 rtc@56
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

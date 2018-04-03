@@ -1,7 +1,7 @@
-From d8791af3a4a780fc502247423e8915620ae46c5d Mon Sep 17 00:00:00 2001
+From 6c2ba052ae7afb0405ada3cc1edcf55b181d6691 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 9 Nov 2017 15:49:37 +0200
-Subject: [PATCH 04/54] cl-som-imx8: dts: Enable i2c2 eeprom@50
+Subject: [PATCH 04/57] cl-som-imx8: dts: Enable i2c2 eeprom@50
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

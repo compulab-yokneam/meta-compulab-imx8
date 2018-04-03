@@ -1,0 +1,26 @@
+From d77ac400dcd254de2e5721908f4b76c85f03cc6b Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Thu, 18 Jan 2018 13:39:14 +0200
+Subject: [PATCH 31/57] cl-som-imx8: dts: Update compatibility string
+
+Update compatibility string.
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 886de9b..03f95a4 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -21,7 +21,7 @@
+ 
+ / {
+ 	model = "CompuLab CL-SOM-iMX8";
+-	compatible = "fsl,imx8mq";
++	compatible = "compulab,cl-som-imx8", "fsl,imx8mq";
+ 
+ 	bcmdhd_wlan_0: bcmdhd_wlan@0 {
+ 		compatible = "android,bcmdhd_wlan";
+-- 
+1.9.1
+

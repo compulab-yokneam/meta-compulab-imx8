@@ -1,7 +1,7 @@
-From 1210bafc8eb4902cbcf3d3dc71c21b23befec8af Mon Sep 17 00:00:00 2001
+From 593664947d040614e426b42553c1ef1c922e0ab0 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Tue, 14 Nov 2017 07:55:23 +0200
-Subject: [PATCH 12/54] cl-som-imx8: dts: Remove unused wdog pinctrl
+Subject: [PATCH 12/57] cl-som-imx8: dts: Remove unused wdog pinctrl
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

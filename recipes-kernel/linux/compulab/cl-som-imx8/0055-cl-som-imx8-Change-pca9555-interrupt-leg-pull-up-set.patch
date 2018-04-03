@@ -1,0 +1,32 @@
+From e83e59ee9e219eea517a4580b6bda35b586ed3e4 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Tue, 13 Feb 2018 17:18:35 +0200
+Subject: [PATCH 55/57] cl-som-imx8: Change pca9555 interrupt leg pull up
+ setting.
+
+1) Change pca9555 interrupt leg pull up settings.
+It reduces the noise between the PCA953X_IRQ and SOC.
+A Side Effect: Pend Down interrupts does not work.
+Requires a HW fix.
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index af4b9c4..fd785f9 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -180,7 +180,7 @@
+ 			fsl,pins = <
+ 				MX8MQ_IOMUXC_GPIO1_IO12_GPIO1_IO12	0x16
+ 				MX8MQ_IOMUXC_NAND_RE_B_GPIO3_IO15	0x16
+-				MX8MQ_IOMUXC_NAND_WE_B_GPIO3_IO17	0x16
++				MX8MQ_IOMUXC_NAND_WE_B_GPIO3_IO17	0xC0
+ 			>;
+ 		};
+ 
+-- 
+1.9.1
+

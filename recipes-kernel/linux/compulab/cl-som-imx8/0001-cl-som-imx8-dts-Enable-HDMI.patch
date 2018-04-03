@@ -1,7 +1,7 @@
-From 8a23c08f612c4522d8b17df111d88b25a17032c8 Mon Sep 17 00:00:00 2001
+From 3161d1eb57846a1d462809334920bd8525724c68 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 9 Nov 2017 08:19:05 +0200
-Subject: [PATCH 01/54] cl-som-imx8: dts: Enable HDMI
+Subject: [PATCH 01/57] cl-som-imx8: dts: Enable HDMI
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

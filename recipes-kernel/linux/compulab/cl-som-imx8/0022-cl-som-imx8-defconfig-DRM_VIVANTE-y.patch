@@ -1,7 +1,7 @@
-From 88024df04a35763289d5aed6f5d056b270d1962a Mon Sep 17 00:00:00 2001
+From a211eea95c4295763afb1eda1a1858aaa7ff2918 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Wed, 27 Dec 2017 21:24:41 +0200
-Subject: [PATCH 22/54] cl-som-imx8: defconfig: DRM_VIVANTE=y
+Subject: [PATCH 22/57] cl-som-imx8: defconfig: DRM_VIVANTE=y
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

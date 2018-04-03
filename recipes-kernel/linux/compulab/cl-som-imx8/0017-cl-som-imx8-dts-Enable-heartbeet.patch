@@ -1,7 +1,7 @@
-From 18baf51332f6fc94eb476df7e65709ff0cc26aed Mon Sep 17 00:00:00 2001
+From a4449de70bdcf7f1502cd76ae21dc5472230df97 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Wed, 15 Nov 2017 15:50:12 +0200
-Subject: [PATCH 17/54] cl-som-imx8: dts: Enable heartbeet
+Subject: [PATCH 17/57] cl-som-imx8: dts: Enable heartbeet
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

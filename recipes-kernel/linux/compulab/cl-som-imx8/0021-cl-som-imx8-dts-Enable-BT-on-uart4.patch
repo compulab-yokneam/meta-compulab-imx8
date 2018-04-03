@@ -1,7 +1,7 @@
-From 1c05d54407d5fab2e9e6e2d2d3d23de477da5a3e Mon Sep 17 00:00:00 2001
+From 6aa27222653fb9df3d2375e07eef2e60041b72f8 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Tue, 12 Dec 2017 19:54:17 +0200
-Subject: [PATCH 21/54] cl-som-imx8: dts: Enable BT on uart4
+Subject: [PATCH 21/57] cl-som-imx8: dts: Enable BT on uart4
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

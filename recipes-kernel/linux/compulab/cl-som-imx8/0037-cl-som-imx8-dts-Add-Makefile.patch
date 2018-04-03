@@ -1,0 +1,38 @@
+From 4be3c54aebec284ca3b98c13efe387bb666ec24f Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Sun, 28 Jan 2018 15:22:09 +0200
+Subject: [PATCH 37/57] cl-som-imx8: dts: Add Makefile
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/Makefile          | 1 +
+ arch/arm64/boot/dts/compulab/Makefile | 5 +++++
+ 2 files changed, 6 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/compulab/Makefile
+
+diff --git a/arch/arm64/boot/dts/Makefile b/arch/arm64/boot/dts/Makefile
+index 6684f97..c803628 100644
+--- a/arch/arm64/boot/dts/Makefile
++++ b/arch/arm64/boot/dts/Makefile
+@@ -6,6 +6,7 @@ dts-dirs += apm
+ dts-dirs += arm
+ dts-dirs += broadcom
+ dts-dirs += cavium
++dts-dirs += compulab
+ dts-dirs += exynos
+ dts-dirs += freescale
+ dts-dirs += hisilicon
+diff --git a/arch/arm64/boot/dts/compulab/Makefile b/arch/arm64/boot/dts/compulab/Makefile
+new file mode 100644
+index 0000000..b106433
+--- /dev/null
++++ b/arch/arm64/boot/dts/compulab/Makefile
+@@ -0,0 +1,5 @@
++dtb-$(CONFIG_ARCH_FSL_IMX8MQ) += cl-som-imx8.dtb cl-som-imx8-4k.dtb 
++				
++always		:= $(dtb-y)
++subdir-y	:= $(dts-dirs)
++clean-files	:= *.dtb
+-- 
+1.9.1
+

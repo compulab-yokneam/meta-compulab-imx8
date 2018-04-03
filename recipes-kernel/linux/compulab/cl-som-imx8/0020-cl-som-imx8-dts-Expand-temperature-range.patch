@@ -1,7 +1,7 @@
-From 6fb9fcbe2f11b801f48e7597e40da1020bd40a2c Mon Sep 17 00:00:00 2001
+From 1ec48b3c31671b592d5137ec5aafb857d3f45dd1 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 30 Nov 2017 15:57:50 +0200
-Subject: [PATCH 20/54] cl-som-imx8: dts: Expand temperature range
+Subject: [PATCH 20/57] cl-som-imx8: dts: Expand temperature range
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

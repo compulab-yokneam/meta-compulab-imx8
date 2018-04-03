@@ -1,0 +1,44 @@
+From 253650d1f81299e7a012ea699d95780160ebd99e Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Tue, 13 Feb 2018 12:21:54 +0200
+Subject: [PATCH 53/57] cl-som-imx8: dts: UART1 prepare for rs485
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 58daa2b..4258ed2 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -267,7 +267,7 @@
+ 			>;
+ 		};
+ 
+-		pinctrl_uart1: uart1grp {
++		pinctrl_uart1_rs485_hdx: uart1rs485hdxgrp {
+ 			fsl,pins = <
+ 				MX8MQ_IOMUXC_UART1_RXD_UART1_DCE_RX		0x79
+ 				MX8MQ_IOMUXC_UART1_TXD_UART1_DCE_TX		0x79
+@@ -588,6 +588,17 @@
+ 	status = "okay";
+ };
+ 
++&uart1 { /* console */
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_uart1_rs485_hdx>;
++	assigned-clocks = <&clk IMX8MQ_CLK_UART1_SRC>;
++	assigned-clock-parents = <&clk IMX8MQ_CLK_25M>;
++	linux,rs485-enabled-at-boot-time;
++	rs485-rts-active-high;
++	rts-gpio = <&pca9555 6 0>;
++	status = "disabled";
++};
++
+ &uart3 { /* console */
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pinctrl_uart3>;
+-- 
+1.9.1
+

@@ -1,7 +1,7 @@
-From 12dc793fdb64db65544c4d2b2c2963bbca2d4e1f Mon Sep 17 00:00:00 2001
+From 765abc56a80b905e713eb2059e34efa30b78cae1 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Wed, 8 Nov 2017 13:26:06 +0200
-Subject: [PATCH 00/54] cl-som-imx8: dts: Add device tree file
+Subject: [PATCH 00/57] cl-som-imx8: dts: Add device tree file
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

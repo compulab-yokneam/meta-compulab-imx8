@@ -1,0 +1,50 @@
+From 2a43786c8ddd1f1cd69ba56f9bc2199f45b63d1e Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Mon, 5 Feb 2018 16:25:26 +0200
+Subject: [PATCH 50/57] cl-som-imx8: dts: Enable pcie0
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 16 +---------------
+ 1 file changed, 1 insertion(+), 15 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 327f3b2..73dfeaa 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -219,14 +219,6 @@
+ 		};
+ 
+ 
+-		pinctrl_pcie0: pcie0grp {
+-			fsl,pins = <
+-				MX8MQ_IOMUXC_I2C4_SCL_GPIO5_IO20	0x16
+-				MX8MQ_IOMUXC_UART4_TXD_GPIO5_IO29	0x16
+-				MX8MQ_IOMUXC_UART4_RXD_GPIO5_IO28	0x16
+-			>;
+-		};
+-
+ 		pinctrl_pcie1: pcie1grp {
+ 			fsl,pins = <
+ 				MX8MQ_IOMUXC_GPIO1_IO02_GPIO1_IO2	0x16 /* WIFI clkreq-gpio  pin#39 */
+@@ -574,16 +566,10 @@
+ 
+ };
+ 
+-#if 0
+ &pcie0{
+-	pinctrl-names = "default";
+-	pinctrl-0 = <&pinctrl_pcie0>;
+-	clkreq-gpio = <&gpio5 20 GPIO_ACTIVE_LOW>;
+-	disable-gpio = <&gpio5 29 GPIO_ACTIVE_LOW>;
+-	reset-gpio = <&gpio5 28 GPIO_ACTIVE_LOW>;
++	reset-gpio = <&pca9555 0 GPIO_ACTIVE_LOW>;
+ 	status = "okay";
+ };
+-#endif
+ 
+ &pcie1{
+ 	pinctrl-names = "default";
+-- 
+1.9.1
+

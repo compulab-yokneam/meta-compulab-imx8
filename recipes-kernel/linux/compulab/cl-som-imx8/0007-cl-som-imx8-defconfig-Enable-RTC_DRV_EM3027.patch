@@ -1,7 +1,7 @@
-From 4752d0a8a326066b5efe23610fde086be2c4b3c3 Mon Sep 17 00:00:00 2001
+From c6bb193b41365c9b8adc38681bbf3511e9e3de51 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 9 Nov 2017 16:00:32 +0200
-Subject: [PATCH 07/54] cl-som-imx8: defconfig: Enable RTC_DRV_EM3027
+Subject: [PATCH 07/57] cl-som-imx8: defconfig: Enable RTC_DRV_EM3027
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

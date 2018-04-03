@@ -1,7 +1,7 @@
-From fb7efa491efb474b6cc3e0a962ef8c3ebf392ded Mon Sep 17 00:00:00 2001
+From 6568d5d2e103782dd1dacad9c4efd3d56f789bc3 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 28 Dec 2017 10:39:52 +0200
-Subject: [PATCH 23/54] cl-som-imx8: defconfig: Enable NFS, CIFS
+Subject: [PATCH 23/57] cl-som-imx8: defconfig: Enable NFS, CIFS
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

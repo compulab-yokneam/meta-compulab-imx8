@@ -1,7 +1,7 @@
-From 86f9c32898c3eebbef7856b3fa0ebd560786649b Mon Sep 17 00:00:00 2001
+From 6a4c31aad104b9f39143c7791a52527ebedbb840 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 9 Nov 2017 15:50:32 +0200
-Subject: [PATCH 05/54] cl-som-imx8: defconfig: Enable EEPROM_AT24
+Subject: [PATCH 05/57] cl-som-imx8: defconfig: Enable EEPROM_AT24
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

@@ -1,7 +1,7 @@
-From 59952e0541612279f2f225956387c6b345d50999 Mon Sep 17 00:00:00 2001
+From 61dd0804096d5131e2eecff5d6a143b77362c78b Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Mon, 20 Nov 2017 15:09:58 +0200
-Subject: [PATCH 18/54] cl-som-imx8: dts: Enable PMIC pfuze10
+Subject: [PATCH 18/57] cl-som-imx8: dts: Enable PMIC pfuze10
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

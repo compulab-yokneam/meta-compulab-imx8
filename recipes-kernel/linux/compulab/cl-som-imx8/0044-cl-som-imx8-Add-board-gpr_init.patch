@@ -1,0 +1,63 @@
+From 5f02b3092a90de232ac79bc110d5dd9478373cf4 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Tue, 30 Jan 2018 12:23:14 +0200
+Subject: [PATCH 44/57] cl-som-imx8: Add board gpr_init()
+
+Add board gpr_init() for the future use only.
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/mach-imx/mach-cl_som_imx8.c | 24 ++++++++++++++++++++++--
+ 1 file changed, 22 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/mach-imx/mach-cl_som_imx8.c b/arch/arm64/mach-imx/mach-cl_som_imx8.c
+index 064607d..eb3535a 100644
+--- a/arch/arm64/mach-imx/mach-cl_som_imx8.c
++++ b/arch/arm64/mach-imx/mach-cl_som_imx8.c
+@@ -3,6 +3,9 @@
+ #include <linux/gpio.h>
+ #include <linux/of.h>
+ #include <linux/of_platform.h>
++#include <linux/mfd/syscon.h>
++#include <linux/mfd/syscon/imx8mq-iomuxc-gpr.h>
++#include <linux/regmap.h>
+ 
+ extern void (*arm_pm_restart)(enum reboot_mode reboot_mode, const char *cmd);
+ 
+@@ -12,14 +15,31 @@ void board_pm_restart(enum reboot_mode reboot_mode, const char *cmd)
+ 	gpio_direction_output(79, 0);
+ }
+ 
++static void gpr_init(void)
++{
++	struct regmap *gpr;
++
++	gpr = syscon_regmap_lookup_by_compatible("fsl,imx8mq-iomuxc-gpr");
++	if (!IS_ERR(gpr)) {
++		pr_info("IOMUXC_GPR5[0] = 1\n");
++		regmap_update_bits(gpr, IOMUXC_GPR5, 1 << 0, 1 << 0);
++	} else {
++		pr_err("%s(): failed to find fsl,imx6q-iomuxc-gpr regmap\n",
++		       __func__);
++	}
++}
++
+ static int cl_som_imx8_init(void)
+ {
+ 	struct device_node *np =
+ 		of_find_compatible_node(NULL, NULL, "compulab,cl-som-imx8");
+ 
+-	if (np)
+-		arm_pm_restart = board_pm_restart;
++	if (!np)
++		return 0;
+ 
++	arm_pm_restart = board_pm_restart;
++	gpr_init();
++	
+ 	return 0;
+ }
+ 
+-- 
+1.9.1
+

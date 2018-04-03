@@ -1,7 +1,7 @@
-From 24ed8fc345c29eb37c801ac6d54ba76cbb6c0dc1 Mon Sep 17 00:00:00 2001
+From cef547ba9fbbca9f7bd2ed3fe0775491b5839649 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Tue, 14 Nov 2017 07:56:45 +0200
-Subject: [PATCH 13/54] cl-som-imx8: dts: Update pcie1 pin settings
+Subject: [PATCH 13/57] cl-som-imx8: dts: Update pcie1 pin settings
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

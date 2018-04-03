@@ -1,7 +1,7 @@
-From 985b4dfeb1cff7101a232d3345df2504c4ca137c Mon Sep 17 00:00:00 2001
+From eab11fd07901b71d6a6667186ac493943548c9de Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
 Date: Thu, 9 Nov 2017 16:37:22 +0200
-Subject: [PATCH 09/54] cl-som-imx8: defconfig: Enable SND_SOC_WM8731
+Subject: [PATCH 09/57] cl-som-imx8: defconfig: Enable SND_SOC_WM8731
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---

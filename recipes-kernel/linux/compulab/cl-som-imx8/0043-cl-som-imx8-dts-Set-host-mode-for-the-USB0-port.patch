@@ -1,7 +1,7 @@
-From 6d25553cecd8dab37ede5948bd2e9c339dd71774 Mon Sep 17 00:00:00 2001
+From 8e6d6ccfef81a3b5b4cb83b35abf3d1ab6bb2d95 Mon Sep 17 00:00:00 2001
 From: Valentin Raevsky <valentin@compulab.co.il>
-Date: Sat, 11 Nov 2017 13:11:40 +0200
-Subject: [PATCH 10/57] cl-som-imx8: dts: Fix iomux section name
+Date: Tue, 30 Jan 2018 12:21:47 +0200
+Subject: [PATCH 43/57] cl-som-imx8: dts: Set host mode for the USB0 port
 
 Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
 ---
@@ -9,18 +9,18 @@ Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
-index 591e380..eaf4323 100644
+index 3220aed..0c4b927 100644
 --- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
 +++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
-@@ -109,7 +109,7 @@
- &iomuxc {
- 	pinctrl-names = "default";
+@@ -612,7 +612,7 @@
  
--	imx8mq-evk {
-+	cl-som-imx8 {
- 		pinctrl_fec1: fec1grp {
- 			fsl,pins = <
- 				MX8MQ_IOMUXC_ENET_MDC_ENET1_MDC		0x3
+ &usb_dwc3_0 {
+ 	status = "okay";
+-	dr_mode = "peripheral";
++	dr_mode = "host";
+ };
+ 
+ &usb3_phy1 {
 -- 
 1.9.1
 
