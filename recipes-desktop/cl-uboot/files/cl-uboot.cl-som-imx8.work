@@ -1,6 +1,6 @@
 #!/bin/bash
 
-RADIO=$(ls /boot/*uboot* | awk '$0=$1" OFF "' ORS="")
+RADIO=$(ls /boot/ | awk '(/uboot|flash/)&&($0=$1" OFF ")' ORS="")
 SELECT=$(dialog --no-items --backtitle "Select a U-Boot file:" --radiolist "Available U-Boot files:" 12 80 12 ${RADIO} --stdout)
 
 [[ -z ${SELECT} ]] && exit
