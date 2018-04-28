@@ -57,5 +57,8 @@ SRC_URI_append_cl-som-imx8 = " \
 	file://0055-cl-som-imx8-Change-pca9555-interrupt-leg-pull-up-set.patch \
 	file://0056-Set-SElinux-as-default-Linux-kernel-security.patch \
 	file://0057-cl-som-imx8-config-Set-loacal-version-1.1.patch \
+	file://0058-sn65dsi83-Add-ti-sn65dsi83-dsi-to-lvds-bridge-driver.patch \
+	file://0059-cl-som-imx8-dst-Enable-lvds-in-device-tree.patch \
+	file://0060-cl-som-imx8-config-Enable-NWL-MIPI-DSI-controller.patch \
 	file://defconfig \
 "

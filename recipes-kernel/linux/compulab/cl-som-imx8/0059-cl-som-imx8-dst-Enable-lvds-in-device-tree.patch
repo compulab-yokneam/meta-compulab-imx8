@@ -1,0 +1,329 @@
+From 14177ebaa4288625cb6dd87fd5a2aa50dd36d3f0 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Sat, 28 Apr 2018 20:50:40 +0300
+Subject: [PATCH 59/60] cl-som-imx8: dst: Enable lvds in device tree
+
+cl-som-imx8-lvds-dcss.dts  - lvds on dcss, hdmi disabled
+cl-som-imx8-lvds-lcdif.dts - lvds on lcdif, hdmi disabled
+cl-som-imx8-dual.dts       - lvds on lcdif, hdmi on dcss
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/Makefile              |   3 +
+ arch/arm64/boot/dts/compulab/cl-som-imx8-dual.dts  | 103 +++++++++++++++
+ .../boot/dts/compulab/cl-som-imx8-lvds-dcss.dts    | 146 +++++++++++++++++++++
+ .../boot/dts/compulab/cl-som-imx8-lvds-lcdif.dts   |  27 ++++
+ 4 files changed, 279 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/compulab/cl-som-imx8-dual.dts
+ create mode 100644 arch/arm64/boot/dts/compulab/cl-som-imx8-lvds-dcss.dts
+ create mode 100644 arch/arm64/boot/dts/compulab/cl-som-imx8-lvds-lcdif.dts
+
+diff --git a/arch/arm64/boot/dts/compulab/Makefile b/arch/arm64/boot/dts/compulab/Makefile
+index b106433..2aeb8fe 100644
+--- a/arch/arm64/boot/dts/compulab/Makefile
++++ b/arch/arm64/boot/dts/compulab/Makefile
+@@ -1,4 +1,7 @@
+ dtb-$(CONFIG_ARCH_FSL_IMX8MQ) += cl-som-imx8.dtb cl-som-imx8-4k.dtb 
++dtb-$(CONFIG_ARCH_FSL_IMX8MQ) += cl-som-imx8-lvds-dcss.dtb
++dtb-$(CONFIG_ARCH_FSL_IMX8MQ) += cl-som-imx8-lvds-lcdif.dtb
++dtb-$(CONFIG_ARCH_FSL_IMX8MQ) += cl-som-imx8-dual.dtb
+ 				
+ always		:= $(dtb-y)
+ subdir-y	:= $(dts-dirs)
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8-dual.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8-dual.dts
+new file mode 100644
+index 0000000..4d80029
+--- /dev/null
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8-dual.dts
+@@ -0,0 +1,103 @@
++/*
++ * Copyright (C) 2018 CopuLab Ltd.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#include "cl-som-imx8.dts"
++
++&iomuxc {
++    cl-som-imx8-lvds {
++        pinctrl_dsi_lvds: dsilvds_group {
++            fsl,pins = <
++                MX8MQ_IOMUXC_GPIO1_IO06_GPIO1_IO6 0x16
++            >;
++        };
++    };
++};
++
++&i2c2 {
++    ti_bridge: sn65dsi83@2c {
++        compatible = "ti,sn65dsi83";
++        reg = <0x2c>;
++        ti,dsi-lanes = <2>;
++        ti,lvds-format = <2>;
++        ti,lvds-bpp = <24>;
++        ti,width-mm = <149>;
++        ti,height-mm = <93>;
++        enable-gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;
++        pinctrl-names = "default";
++        pinctrl-0 = <&pinctrl_dsi_lvds>;
++        status = "okay";
++
++        display-timings {
++            lvds {
++                clock-frequency = <62500000>;
++                hactive = <1280>;
++                vactive = <800>;
++                hback-porch = <6>;
++                hfront-porch = <5>;
++                vback-porch = <2>;
++                vfront-porch = <3>;
++                hsync-len = <2>;
++                vsync-len = <1>;
++                hsync-active = <0>;
++                vsync-active = <0>;
++                de-active = <0>;
++                pixelclk-active = <0>;
++            };
++        };
++
++        port {
++            sn65dsi83_in: endpoint {
++                remote-endpoint = <&mipi_dsi_bridge_out>;
++            };
++        };
++    };
++};
++
++&lcdif {
++    status = "okay";
++    max-res = <1280>, <800>;
++
++    port@0 {
++        lcdif_mipi_dsi: mipi-dsi-endpoint {
++            remote-endpoint = <&mipi_dsi_in>;
++        };
++    };
++};
++
++&mipi_dsi_phy {
++    status = "okay";
++};
++
++&mipi_dsi {
++    status = "okay";
++    as_bridge;
++    sync-pol = <1>;
++    pwr-delay = <10>;
++
++    port@1 {
++        mipi_dsi_in: endpoint {
++            remote-endpoint = <&lcdif_mipi_dsi>;
++        };
++    };
++};
++
++&mipi_dsi_bridge {
++    status = "okay";
++
++    port@1 {
++        mipi_dsi_bridge_out: endpoint {
++            remote-endpoint = <&sn65dsi83_in>;
++        };
++    };
++};
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8-lvds-dcss.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8-lvds-dcss.dts
+new file mode 100644
+index 0000000..6b421c1
+--- /dev/null
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8-lvds-dcss.dts
+@@ -0,0 +1,146 @@
++/*
++ * Copyright (C) 2018 CopuLab Ltd.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#include "cl-som-imx8.dts"
++
++&iomuxc {
++    cl-som-imx8-lvds {
++        pinctrl_dsi_lvds: dsilvds_group {
++            fsl,pins = <
++                MX8MQ_IOMUXC_GPIO1_IO06_GPIO1_IO6 0x16
++            >;
++        };
++    };
++};
++
++&i2c2 {
++    ti_bridge: sn65dsi83@2c {
++        compatible = "ti,sn65dsi83";
++        reg = <0x2c>;
++        ti,dsi-lanes = <2>;
++        ti,lvds-format = <2>;
++        ti,lvds-bpp = <24>;
++        ti,width-mm = <149>;
++        ti,height-mm = <93>;
++        enable-gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;
++        pinctrl-names = "default";
++        pinctrl-0 = <&pinctrl_dsi_lvds>;
++        status = "okay";
++
++        display-timings {
++            lvds {
++                clock-frequency = <62500000>;
++                hactive = <1280>;
++                vactive = <800>;
++                hback-porch = <6>;
++                hfront-porch = <5>;
++                vback-porch = <2>;
++                vfront-porch = <3>;
++                hsync-len = <2>;
++                vsync-len = <1>;
++                hsync-active = <0>;
++                vsync-active = <0>;
++                de-active = <0>;
++                pixelclk-active = <0>;
++            };
++        };
++
++        port {
++            sn65dsi83_in: endpoint {
++                remote-endpoint = <&mipi_dsi_bridge_out>;
++            };
++        };
++    };
++};
++
++&dcss {
++    status = "okay";
++    disp-dev = "mipi_disp";
++
++    clocks = <&clk IMX8MQ_CLK_DISP_APB_ROOT>,
++         <&clk IMX8MQ_CLK_DISP_AXI_ROOT>,
++         <&clk IMX8MQ_CLK_DISP_RTRM_ROOT>,
++         <&clk IMX8MQ_CLK_DC_PIXEL_DIV>,
++         <&clk IMX8MQ_CLK_DUMMY>,
++         <&clk IMX8MQ_CLK_DISP_DTRC_DIV>;
++    clock-names = "apb", "axi", "rtrm", "pix_div", "pix_out", "dtrc";
++
++    assigned-clocks = <&clk IMX8MQ_CLK_DC_PIXEL_SRC>,
++              <&clk IMX8MQ_CLK_DISP_AXI_SRC>,
++              <&clk IMX8MQ_CLK_DISP_RTRM_SRC>,
++              <&clk IMX8MQ_CLK_DISP_RTRM_PRE_DIV>,
++              <&clk IMX8MQ_VIDEO_PLL1_REF_SEL>,
++              <&clk IMX8MQ_VIDEO_PLL1>;
++    assigned-clock-parents = <&clk IMX8MQ_VIDEO_PLL1_OUT>,
++                 <&clk IMX8MQ_SYS1_PLL_800M>,
++                 <&clk IMX8MQ_SYS1_PLL_800M>,
++                 <&clk IMX8MQ_VIDEO_PLL1_OUT>,
++                 <&clk IMX8MQ_CLK_25M>;
++    assigned-clock-rates = <600000000>,
++                   <800000000>,
++                   <400000000>,
++                   <400000000>,
++                   <0>,
++                   <599999999>;
++    dcss_disp0: port@0 {
++        reg = <0>;
++        dcss_disp0_mipi_dsi: mipi_dsi {
++            remote-endpoint = <&mipi_dsi_in>;
++        };
++    };
++};
++
++&mipi_dsi_phy {
++    status = "okay";
++};
++
++&mipi_dsi {
++    status = "okay";
++
++    assigned-clocks = <&clk IMX8MQ_CLK_DSI_PHY_REF_SRC>,
++              <&clk IMX8MQ_CLK_DSI_CORE_SRC>,
++              <&clk IMX8MQ_VIDEO_PLL1_REF_SEL>,
++              <&clk IMX8MQ_VIDEO_PLL1>;
++    assigned-clock-parents = <&clk IMX8MQ_VIDEO_PLL1_OUT>,
++                 <&clk IMX8MQ_SYS1_PLL_266M>,
++                 <&clk IMX8MQ_CLK_25M>;
++    assigned-clock-rates = <24000000>,
++                   <266000000>,
++                   <0>,
++                   <599999999>;
++
++    port@1 {
++        mipi_dsi_in: endpoint {
++            remote-endpoint = <&dcss_disp0_mipi_dsi>;
++        };
++    };
++};
++
++&mipi_dsi_bridge {
++    status = "okay";
++
++    port@1 {
++        mipi_dsi_bridge_out: endpoint {
++            remote-endpoint = <&sn65dsi83_in>;
++        };
++    };
++};
++
++&hdmi {
++    status = "disabled";
++};
++
++&hdmi_cec {
++    status = "disabled";
++};
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8-lvds-lcdif.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8-lvds-lcdif.dts
+new file mode 100644
+index 0000000..13ae70b
+--- /dev/null
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8-lvds-lcdif.dts
+@@ -0,0 +1,27 @@
++/*
++ * Copyright (C) 2018 CopuLab Ltd.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#include "cl-som-imx8-dual.dts"
++
++&dcss {
++	status = "disabled";
++};
++
++&hdmi {
++	status = "disabled";
++};
++
++&hdmi_cec {
++	status = "disabled";
++};
+-- 
+1.9.1
+
