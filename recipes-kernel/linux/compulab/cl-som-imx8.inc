@@ -60,5 +60,8 @@ SRC_URI_append_cl-som-imx8 = " \
 	file://0058-sn65dsi83-Add-ti-sn65dsi83-dsi-to-lvds-bridge-driver.patch \
 	file://0059-cl-som-imx8-dst-Enable-lvds-in-device-tree.patch \
 	file://0060-cl-som-imx8-config-Enable-NWL-MIPI-DSI-controller.patch \
+	file://0061-cl-som-imx8-dst-Enable-csi-in-device-tree.patch \
+	file://0062-ov5640_mipi_v2-gpio-reset-to-make-use-of-gpio_set_va.patch \
+	file://0063-cl-som-imx8-config-Update-defconfig-for-MIPI-CSI.patch \
 	file://defconfig \
 "

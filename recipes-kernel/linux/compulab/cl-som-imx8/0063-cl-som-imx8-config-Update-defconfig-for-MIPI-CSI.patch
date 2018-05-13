@@ -1,0 +1,39 @@
+From d79276d4e2453e0fa7bebf87c8c43541a21bfa32 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Wed, 2 May 2018 08:50:34 +0300
+Subject: [PATCH 63/63] cl-som-imx8: config: Update defconfig for MIPI CSI
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/configs/cl-som-imx8_defconfig | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/configs/cl-som-imx8_defconfig b/arch/arm64/configs/cl-som-imx8_defconfig
+index daa5aa8..1e5c90e 100644
+--- a/arch/arm64/configs/cl-som-imx8_defconfig
++++ b/arch/arm64/configs/cl-som-imx8_defconfig
+@@ -344,8 +344,12 @@ CONFIG_MEDIA_CAMERA_SUPPORT=y
+ CONFIG_MEDIA_CONTROLLER=y
+ CONFIG_VIDEO_V4L2_SUBDEV_API=y
+ CONFIG_V4L_PLATFORM_DRIVERS=y
++CONFIG_VIDEO_MXC_CAPTURE=y
+ CONFIG_VIDEO_MX8_CAPTURE=y
+ CONFIG_GMSL_MAX9286=y
++CONFIG_VIDEO_MXC_CSI_CAMERA=y
++CONFIG_MXC_MIPI_CSI=y
++CONFIG_MXC_CAMERA_OV5640_MIPI_V2=y
+ CONFIG_V4L_MEM2MEM_DRIVERS=y
+ CONFIG_IMX_DPU_CORE=y
+ CONFIG_IMX_DCSS_CORE=y
+@@ -355,8 +359,6 @@ CONFIG_DRM_VIVANTE=y
+ CONFIG_DRM_MSM=m
+ CONFIG_DRM_TEGRA=m
+ CONFIG_DRM_PANEL_SIMPLE=m
+-CONFIG_DRM_I2C_ADV7511=m
+-CONFIG_DRM_ITE_IT6263=y
+ CONFIG_DRM_IMX_PARALLEL_DISPLAY=y
+ CONFIG_DRM_IMX_TVE=y
+ CONFIG_DRM_IMX_LDB=y
+-- 
+1.9.1
+
