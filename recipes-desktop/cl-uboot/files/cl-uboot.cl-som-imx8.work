@@ -5,12 +5,15 @@ SELECT=$(dialog --no-items --backtitle "Select a U-Boot file:" --radiolist "Avai
 
 [[ -z ${SELECT} ]] && exit
 
-IMX_BOOT=${SELECT}
+IMX_BOOT=/boot/${SELECT}
 
 RADIO=$(ls /sys/class/block/mmcblk[0,1]/size | awk -F"/" '($0="/dev/"$5)' | awk '$0=$1" OFF "' ORS="")
+if [[ ! -z ${RADIO} ]];then
 SELECT=$(dialog --no-items --backtitle "Select a boot device:" --radiolist "Available boot devices:" 12 80 12 ${RADIO} --stdout)
-
 [[ -z ${SELECT} ]] && exit
+else
+SELECT=/dev/null
+fi
 
 IMX_DEV=${SELECT}
 
