@@ -63,5 +63,6 @@ SRC_URI_append_cl-som-imx8 = " \
 	file://0061-cl-som-imx8-dst-Enable-csi-in-device-tree.patch \
 	file://0062-ov5640_mipi_v2-gpio-reset-to-make-use-of-gpio_set_va.patch \
 	file://0063-cl-som-imx8-config-Update-defconfig-for-MIPI-CSI.patch \
+	file://0064-cl-som-imx8-dts-Enable-edid-for-hdmi.patch \
 	file://defconfig \
 "
