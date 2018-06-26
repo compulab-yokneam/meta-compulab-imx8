@@ -1,0 +1,36 @@
+From 2d683fd74c143105f931e676f5e36eaf6762e4c9 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Sun, 24 Jun 2018 19:22:53 +0300
+Subject: [PATCH 66/68] cl-som-imx8: dts: Reduce the CMA size down to 384M
+
+Reduce the CMA size down to 384M.
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 133cbed..15b8163 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -163,6 +163,16 @@
+ 	};
+ };
+ 
++&resmem {
++    linux,cma {
++        compatible = "shared-dma-pool";
++        reusable;
++        size = <0 0x18000000>;
++        alloc-ranges = <0 0x40000000 0 0x40000000>;
++        linux,cma-default;
++    };
++};
++
+ &clk {
+ 	assigned-clocks = <&clk IMX8MQ_AUDIO_PLL1>;
+ 	assigned-clock-rates = <786432000>;
+-- 
+1.9.1
+

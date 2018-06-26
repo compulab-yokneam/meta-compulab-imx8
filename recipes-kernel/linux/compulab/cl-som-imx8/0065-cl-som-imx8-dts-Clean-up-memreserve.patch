@@ -1,0 +1,27 @@
+From deff8747f0123eabee32eded8ea3bd46383f4df8 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Sun, 24 Jun 2018 19:04:01 +0300
+Subject: [PATCH 65/68] cl-som-imx8: dts: Clean up memreserve
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 217ad68..133cbed 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -14,9 +14,6 @@
+ 
+ /dts-v1/;
+ 
+-/* First 128KB is for PSCI ATF. */
+-/memreserve/ 0x40000000 0x00020000;
+-
+ #include "../freescale/fsl-imx8mq.dtsi"
+ 
+ / {
+-- 
+1.9.1
+

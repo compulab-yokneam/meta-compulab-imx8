@@ -64,5 +64,9 @@ SRC_URI_append_cl-som-imx8 = " \
 	file://0062-ov5640_mipi_v2-gpio-reset-to-make-use-of-gpio_set_va.patch \
 	file://0063-cl-som-imx8-config-Update-defconfig-for-MIPI-CSI.patch \
 	file://0064-cl-som-imx8-dts-Enable-edid-for-hdmi.patch \
+	file://0065-cl-som-imx8-dts-Clean-up-memreserve.patch \
+	file://0066-cl-som-imx8-dts-Reduce-the-CMA-size-down-to-384M.patch \
+	file://0067-cl-som-imx8-dts-Enable-goodix-ts-on-i2c3-bus.patch \
+	file://0068-cl-som-imx8-config-Enable-goodix-touch-screen.patch \
 	file://defconfig \
 "

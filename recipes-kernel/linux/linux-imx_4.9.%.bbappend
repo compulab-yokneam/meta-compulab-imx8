@@ -9,4 +9,6 @@ do_configure_append_cl-som-imx8 () {
     sed -i '/CONFIG_MXC_GPU_VIV/d;$a # CONFIG_MXC_GPU_VIV is not set' .config
 }
 
+KERNEL_MODULE_AUTOLOAD += "goodix"
+
 COMPATIBLE_MACHINE = "(cl-som-imx8)"

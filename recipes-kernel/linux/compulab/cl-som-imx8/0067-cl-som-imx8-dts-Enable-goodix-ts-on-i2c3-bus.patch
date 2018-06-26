@@ -1,0 +1,66 @@
+From 05d7c70ff589049fca88d7bc0a4bee9b07be364a Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Tue, 26 Jun 2018 11:28:12 +0300
+Subject: [PATCH 67/68] cl-som-imx8: dts: Enable goodix ts on i2c3 bus
+
+Enable goodix ts on i2c3 bus.
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts | 33 ++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index 15b8163..099ecde 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -225,6 +225,19 @@
+ 			>;
+ 		};
+ 
++		pinctrl_i2c3: i2c3grp {
++			fsl,pins = <
++				MX8MQ_IOMUXC_I2C3_SCL_I2C3_SCL	0x4000007f
++				MX8MQ_IOMUXC_I2C3_SDA_I2C3_SDA	0x4000007f
++			>;
++		};
++
++		touchscreen_pins: touchscreen-pins {
++			fsl,pins = <
++				MX8MQ_IOMUXC_NAND_CE3_B_GPIO3_IO4 0x17059 /* P21.34 IRQ */
++				MX8MQ_IOMUXC_NAND_CE2_B_GPIO3_IO3 0x17059 /* P21.32 RST */
++			>;
++		};
+ 
+ 		pinctrl_pcie1: pcie1grp {
+ 			fsl,pins = <
+@@ -573,6 +586,26 @@
+ 
+ };
+ 
++&i2c3 {
++    clock-frequency = <400000>;
++    pinctrl-names = "default";
++    pinctrl-0 = <&pinctrl_i2c3>;
++    status = "okay";
++    goodix_ts@5d {
++        compatible = "goodix,gt911";
++        reg = <0x5d>;
++
++        interrupt-parent = <&gpio3>;
++        interrupts = <3 IRQ_TYPE_EDGE_FALLING>;
++
++        pinctrl-names = "default";
++        pinctrl-0 = <&touchscreen_pins>;
++
++        irq-gpios = <&gpio3 3 GPIO_ACTIVE_HIGH>;
++        reset-gpios = <&gpio3 4 GPIO_ACTIVE_HIGH>;
++    };
++};
++
+ &pcie0{
+ 	reset-gpio = <&pca9555 0 GPIO_ACTIVE_LOW>;
+ 	status = "okay";
+-- 
+1.9.1
+
