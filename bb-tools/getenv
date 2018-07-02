@@ -1,6 +1,4 @@
 cat << eof
-export ARCH=${ARCH}
-export CROSS_COMPILE=$(dirname $(which ${CROSS_COMPILE}gcc))/${CROSS_COMPILE}
 export ORIGIN=$(git remote -v | awk '(/fetch/)&&($0=$2)')
 export HEAD=$(git show --stat | awk '(/^commit/)&&($0=$2)')
 export SRC=$(pwd)
