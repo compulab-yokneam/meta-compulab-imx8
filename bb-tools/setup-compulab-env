@@ -27,6 +27,8 @@ eom
     ${EXIT} 2
 fi
 
+[[ -n ${FORCE} ]] && rm -rf ${BB_CL_CONF_DONE}
+
 if [ -f ${BB_CL_CONF_DONE} ];then
 cat << eom
     Note: Already issued.
