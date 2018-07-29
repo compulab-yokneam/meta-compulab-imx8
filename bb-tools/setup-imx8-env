@@ -1,0 +1,8 @@
+. fsl-setup-release.sh $@
+
+declare -a ENVIRONMENT=('../sources/meta-compulab/bb-tools/setup-compulab-env' \
+			'../sources/meta-compulab-imx8/bb-tools/setup-compulab-env')
+
+for env in ${ENVIRONMENT[@]};do
+[ -f ${env} ] && FORCE=Yes source ${env}
+done
