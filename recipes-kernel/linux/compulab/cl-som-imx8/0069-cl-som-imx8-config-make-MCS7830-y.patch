@@ -1,0 +1,40 @@
+From d2f98d9d332aa759ca17a8d7884e66231aaebcfe Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Mon, 30 Jul 2018 15:49:14 +0300
+Subject: [PATCH 69/69] cl-som-imx8: config: make MCS7830=y
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/configs/cl-som-imx8_defconfig | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/configs/cl-som-imx8_defconfig b/arch/arm64/configs/cl-som-imx8_defconfig
+index 3b9c904..764aa48 100644
+--- a/arch/arm64/configs/cl-som-imx8_defconfig
++++ b/arch/arm64/configs/cl-som-imx8_defconfig
+@@ -220,13 +220,20 @@ CONFIG_REALTEK_PHY=m
+ CONFIG_USB_PEGASUS=m
+ CONFIG_USB_RTL8150=m
+ CONFIG_USB_RTL8152=m
+-CONFIG_USB_USBNET=m
++CONFIG_USB_USBNET=y
++CONFIG_USB_NET_AX8817X=m
++CONFIG_USB_NET_AX88179_178A=m
++CONFIG_USB_NET_CDCETHER=m
++CONFIG_USB_NET_CDC_NCM=m
+ CONFIG_USB_NET_DM9601=m
+ CONFIG_USB_NET_SR9800=m
+ CONFIG_USB_NET_SMSC75XX=m
+ CONFIG_USB_NET_SMSC95XX=m
++CONFIG_USB_NET_NET1080=m
+ CONFIG_USB_NET_PLUSB=m
+-CONFIG_USB_NET_MCS7830=m
++CONFIG_USB_NET_MCS7830=y
++CONFIG_USB_NET_CDC_SUBSET=m
++CONFIG_USB_NET_ZAURUS=m
+ CONFIG_BCMDHD_1363=y
+ CONFIG_BCMDHD_PCIE=y
+ # CONFIG_WLAN_VENDOR_TI is not set
+-- 
+1.9.1
+
