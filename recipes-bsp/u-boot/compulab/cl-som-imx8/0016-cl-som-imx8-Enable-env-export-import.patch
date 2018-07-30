@@ -1,0 +1,26 @@
+From f7f510038256431342a202878524918b6a9280fa Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Mon, 30 Jul 2018 18:22:21 +0300
+Subject: [PATCH 16/16] cl-som-imx8: Enable env export/import
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ include/configs/cl-som-imx8.h | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/include/configs/cl-som-imx8.h b/include/configs/cl-som-imx8.h
+index 02475cc..0c31c14 100644
+--- a/include/configs/cl-som-imx8.h
++++ b/include/configs/cl-som-imx8.h
+@@ -68,8 +68,6 @@
+ /* Flat Device Tree Definitions */
+ #define CONFIG_OF_BOARD_SETUP
+ 
+-#undef CONFIG_CMD_EXPORTENV
+-#undef CONFIG_CMD_IMPORTENV
+ #undef CONFIG_CMD_IMLS
+ 
+ #undef CONFIG_CMD_CRC32
+-- 
+1.9.1
+

@@ -15,5 +15,6 @@ SRC_URI_append_cl-som-imx8 = " \
 	file://0013-cl-som-imx8-config-Disable-CONFIG_NXP_TMU.patch \
 	file://0014-cl-som-imx8-Set-correct-module-eeprom-bus-address.patch \
 	file://0015-cl-som-imx8-Add-ATP-support.patch \
+	file://0016-cl-som-imx8-Enable-env-export-import.patch \
 	file://cl-som-imx8_defconfig \
 "
