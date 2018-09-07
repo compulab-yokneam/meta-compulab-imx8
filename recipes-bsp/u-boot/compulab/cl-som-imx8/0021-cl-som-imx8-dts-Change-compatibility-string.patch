@@ -1,0 +1,33 @@
+From 5f560305251e3e6d9eba95aeae68cfa7b20b111e Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Tue, 4 Sep 2018 09:47:25 +0300
+Subject: [PATCH 21/21] cl-som-imx8: dts: Change compatibility string
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm/dts/cl-som-imx8.dts | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/arch/arm/dts/cl-som-imx8.dts b/arch/arm/dts/cl-som-imx8.dts
+index e2dccec..2a7f2fa 100644
+--- a/arch/arm/dts/cl-som-imx8.dts
++++ b/arch/arm/dts/cl-som-imx8.dts
+@@ -14,14 +14,11 @@
+ 
+ /dts-v1/;
+ 
+-/* First 128KB is for PSCI ATF. */
+-/memreserve/ 0x40000000 0x00020000;
+-
+ #include "fsl-imx8mq.dtsi"
+ 
+ / {
+ 	model = "CompuLab CL-SOM-iMX8";
+-	compatible = "fsl,imx8mq";
++	compatible = "compulab,cl-som-imx8", "fsl,imx8mq";
+ 
+ 	bcmdhd_wlan_0: bcmdhd_wlan@0 {
+ 		compatible = "android,bcmdhd_wlan";
+-- 
+1.9.1
+

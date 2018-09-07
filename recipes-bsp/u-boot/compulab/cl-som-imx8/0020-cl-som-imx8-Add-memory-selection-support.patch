@@ -1,0 +1,177 @@
+From e9e6a91901c91482d669348de3c87dbbed247f2d Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Mon, 3 Sep 2018 22:40:03 +0300
+Subject: [PATCH 20/21] cl-som-imx8: Add memory selection support
+
+Add memory selection support in menuconfig.
+Default settings is 2_1G.
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ board/compulab/cl-som-imx8/Kconfig        | 57 +++++++++++++++++++++++++++++++
+ board/compulab/cl-som-imx8/ddr/ddr_init.c | 36 ++++++++++++++++---
+ 2 files changed, 88 insertions(+), 5 deletions(-)
+
+diff --git a/board/compulab/cl-som-imx8/Kconfig b/board/compulab/cl-som-imx8/Kconfig
+index a26a589..96a4183 100644
+--- a/board/compulab/cl-som-imx8/Kconfig
++++ b/board/compulab/cl-som-imx8/Kconfig
+@@ -9,4 +9,61 @@ config SYS_VENDOR
+ config SYS_CONFIG_NAME
+ 	default "cl-som-imx8"
+ 
++choice
++	prompt "RAM Volume select"
++	default RAM_2_1G
++	help
++	 This option configures 2G RAM only
++
++config RAM_1G
++	bool "RAM_1G"
++	select RAM_SET_1G
++	help
++	 This option configures 1G RAM only
++
++config RAM_2G
++	bool "RAM_2G"
++	select RAM_SET_2G
++	help
++	 This option configures 2G RAM only
++
++config RAM_2_1G
++	bool "RAM_2_1G"
++	select RAM_SET_2G
++	select RAM_SET_1G
++	help
++	 This option configures 2G RAM if no luck then 1G
++
++config RAM_4G
++	bool "RAM_4G"
++	select RAM_SET_4G
++	help
++	 This option configures 4G RAM only
++
++config RAM_4_1G
++	bool "RAM_4_1G"
++	select RAM_SET_4G
++	select RAM_SET_1G
++	help
++	 This option configures 4G RAM if no luck then 1G
++
++config RAM_4_2_1G
++	bool "RAM_4_2_1G"
++	select RAM_SET_4G
++	select RAM_SET_2G
++	select RAM_SET_1G
++	help
++	 This option configures 4G RAM if no luck then 2G if no luck then 1G (does not work yet)
++
++endchoice
++
++config RAM_SET_4G
++	bool
++
++config RAM_SET_2G
++	bool
++
++config RAM_SET_1G
++	bool
++
+ endif
+diff --git a/board/compulab/cl-som-imx8/ddr/ddr_init.c b/board/compulab/cl-som-imx8/ddr/ddr_init.c
+index 308142b..7c6e7b5 100644
+--- a/board/compulab/cl-som-imx8/ddr/ddr_init.c
++++ b/board/compulab/cl-som-imx8/ddr/ddr_init.c
+@@ -33,6 +33,7 @@ struct regv {
+ 	unsigned long value;
+ };
+ 
++#ifdef CONFIG_RAM_SET_1G
+ static struct regv aregv1[] = {
+     {0x3d400000,0xa1080020},
+     {0x3d400064,0x610090},
+@@ -44,7 +45,14 @@ static struct regv aregv1[] = {
+     {0x54012,0x110},
+     {0x5402c,0x1},
+ };
++#define RANGE1 0x40000000,
++#define AREGV1 aregv1,
++#else
++#define RANGE1
++#define AREGV1
++#endif
+ 
++#ifdef CONFIG_RAM_SET_2G
+ static struct regv aregv2[] = {
+     {0x3d400000,0xa3080020},
+     {0x3d400064,0x6100e0},
+@@ -56,7 +64,14 @@ static struct regv aregv2[] = {
+     {0x54012,0x310},
+     {0x5402c,0x3},
+ };
++#define RANGE2 0x80000000,
++#define AREGV2 aregv2,
++#else
++#define RANGE2
++#define AREGV2
++#endif
+ 
++#ifdef CONFIG_RAM_SET_4G
+ static struct regv aregv4[] = {
+     {0x3d400000,0xa3080020},
+     {0x3d400064,0x6100e0},
+@@ -68,6 +83,12 @@ static struct regv aregv4[] = {
+     {0x54012,0x310},
+     {0x5402c,0x3},
+ };
++#define RANGE4 0x100000000,
++#define AREGV4 aregv4,
++#else
++#define RANGE4
++#define AREGV4
++#endif
+ 
+ enum regs {
+     REG0000 = 0x0,
+@@ -81,8 +102,10 @@ enum regs {
+     REG5402C = 0x8,
+ };
+ 
+-static unsigned long sdram_size[] = {0, 0x100000000, 0x80000000, 0x40000000};
+-static struct regv* pregv[] = {NULL, aregv4, aregv2, aregv1};
++#ifdef __GET_RAM_SIZE__
++static unsigned long sdram_size[] = {0, RANGE4 RANGE2 RANGE1};
++#endif
++static struct regv* pregv[] = {NULL, AREGV4 AREGV2 AREGV1};
+ 
+ #define REG0000_VALUE pregv[0][REG0000].value
+ #define REG0064_VALUE pregv[0][REG0064].value
+@@ -333,7 +356,9 @@ void ddr_init()
+ {
+     size_t i, n = sizeof(pregv) / sizeof(pregv[0]);
+     unsigned int result;
+-    phys_size_t _sdram_size;
++#ifdef __GET_RAM_SIZE__
++    long _sdram_size;
++#endif
+     /* Start from #1; #0 is for defaults */
+     for (i=1 ; i < n ; i++) {
+         pregv[0] = pregv[i];
+@@ -343,11 +368,12 @@ void ddr_init()
+             printf("Warning [%zu/%zu] : ddr init failed\n", i , n-1);
+         } else {
+             printf("Success [%zu/%zu] : ddr init passed\n", i , n-1);
++#ifdef __GET_RAM_SIZE__
+             _sdram_size = get_ram_size((long int *)PHYS_SDRAM, sdram_size[i]);
+             printf("Mem discovery %zx / %zx \n",_sdram_size, sdram_size[i]);
+-            if (_sdram_size == sdram_size[i]) {
++            if (_sdram_size == sdram_size[i])
++#endif
+                 return;
+-            }
+         }
+         ddr_phy_reset();
+     }
+-- 
+1.9.1
+

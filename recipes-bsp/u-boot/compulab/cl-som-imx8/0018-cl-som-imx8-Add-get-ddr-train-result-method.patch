@@ -1,0 +1,74 @@
+From 9db28289dc3ffe0b56cf2900dad068ebe26fa006 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Sat, 18 Aug 2018 16:41:40 +0300
+Subject: [PATCH 18/21] cl-som-imx8: Add get ddr train result method
+
+Add get ddr train result method &
+evaluate it while in spl.
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ board/compulab/cl-som-imx8/ddr/ddr.h                         |  7 ++++++-
+ .../compulab/cl-som-imx8/ddr/wait_ddrphy_training_complete.c | 12 ++++++++++++
+ 2 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/board/compulab/cl-som-imx8/ddr/ddr.h b/board/compulab/cl-som-imx8/ddr/ddr.h
+index 9acb29c..ccbdf8d 100644
+--- a/board/compulab/cl-som-imx8/ddr/ddr.h
++++ b/board/compulab/cl-som-imx8/ddr/ddr.h
+@@ -4,6 +4,9 @@
+  * SPDX-License-Identifier:	GPL-2.0+
+  */
+ 
++#ifndef __DDR_H__
++#define __DDR_H__
++
+ enum fw_type {
+ 	FW_1D_IMAGE,
+ 	FW_2D_IMAGE,
+@@ -11,7 +14,7 @@ enum fw_type {
+ 
+ void ddr_init(void);
+ void ddr_load_train_code(enum fw_type type);
+-void lpddr4_800M_cfg_phy(void);
++int get_ddrphy_training_result(void);
+ 
+ static inline void reg32_write(unsigned long addr, u32 val)
+ {
+@@ -32,3 +35,5 @@ static inline void reg32setbit(unsigned long addr, u32 bit)
+ {
+ 	setbits_le32(addr, (1 << bit));
+ }
++
++#endif
+diff --git a/board/compulab/cl-som-imx8/ddr/wait_ddrphy_training_complete.c b/board/compulab/cl-som-imx8/ddr/wait_ddrphy_training_complete.c
+index 0b42e58..a78ed5e 100644
+--- a/board/compulab/cl-som-imx8/ddr/wait_ddrphy_training_complete.c
++++ b/board/compulab/cl-som-imx8/ddr/wait_ddrphy_training_complete.c
+@@ -4,6 +4,17 @@
+  * SPDX-License-Identifier:	GPL-2.0+
+  */
+ 
++static unsigned int ddrphy_training_result;
++static void set_ddrphy_training_result(int result)
++{
++	ddrphy_training_result = result;
++}
++
++int get_ddrphy_training_result(void)
++{
++	return (ddrphy_training_result != 0x07);
++}
++
+ static inline void poll_pmu_message_ready(void)
+ {
+ 	unsigned int reg;
+@@ -93,4 +104,5 @@ void wait_ddrphy_training_complete(void)
+ 			break;
+ 		}
+ 	}
++	set_ddrphy_training_result(mail);
+ }
+-- 
+1.9.1
+
