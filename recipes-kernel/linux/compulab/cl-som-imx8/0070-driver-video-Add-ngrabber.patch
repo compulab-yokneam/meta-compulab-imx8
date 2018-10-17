@@ -1,0 +1,2849 @@
+From a8c62abb8776c832ca8320f513f0da04009a1ae6 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Wed, 17 Oct 2018 16:02:09 +0300
+Subject: [PATCH 70/70] driver: video: Add ngrabber
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ drivers/video/Kconfig                              |    2 +
+ drivers/video/Makefile                             |    2 +
+ drivers/video/ngrabber/Kconfig                     |    4 +
+ drivers/video/ngrabber/Makefile                    |   10 +
+ drivers/video/ngrabber/ng-driver.c                 | 1870 ++++++++++++++++++++
+ drivers/video/ngrabber/ng-regs.h                   |   88 +
+ drivers/video/ngrabber/videobuf2-dma-contig-3.10.c |  803 +++++++++
+ 7 files changed, 2779 insertions(+)
+ create mode 100644 drivers/video/ngrabber/Kconfig
+ create mode 100644 drivers/video/ngrabber/Makefile
+ create mode 100644 drivers/video/ngrabber/ng-driver.c
+ create mode 100644 drivers/video/ngrabber/ng-regs.h
+ create mode 100644 drivers/video/ngrabber/videobuf2-dma-contig-3.10.c
+
+diff --git a/drivers/video/Kconfig b/drivers/video/Kconfig
+index 21e9baf..a986342 100644
+--- a/drivers/video/Kconfig
++++ b/drivers/video/Kconfig
+@@ -47,3 +47,5 @@ endif
+ 
+ 
+ endmenu
++
++source "drivers/video/ngrabber/Kconfig"
+diff --git a/drivers/video/Makefile b/drivers/video/Makefile
+index 9ad3c17..0c81af1 100644
+--- a/drivers/video/Makefile
++++ b/drivers/video/Makefile
+@@ -11,3 +11,5 @@ obj-$(CONFIG_VIDEOMODE_HELPERS) += display_timing.o videomode.o
+ ifeq ($(CONFIG_OF),y)
+ obj-$(CONFIG_VIDEOMODE_HELPERS) += of_display_timing.o of_videomode.o
+ endif
++
++obj-$(CONFIG_NGRABBER)		  += ngrabber/
+diff --git a/drivers/video/ngrabber/Kconfig b/drivers/video/ngrabber/Kconfig
+new file mode 100644
+index 0000000..ffc0b8c
+--- /dev/null
++++ b/drivers/video/ngrabber/Kconfig
+@@ -0,0 +1,4 @@
++config  NGRABBER
++	tristate "nanoGrabber-HD-HDMI Video4Linux2 driver package"
++	default m
++
+diff --git a/drivers/video/ngrabber/Makefile b/drivers/video/ngrabber/Makefile
+new file mode 100644
+index 0000000..23d0e1b
+--- /dev/null
++++ b/drivers/video/ngrabber/Makefile
+@@ -0,0 +1,10 @@
++ngrabber-objs := ng-driver.o
++
++obj-$(CONFIG_NGRABBER) += ngrabber.o
++
++EXTRA_CFLAGS += -Idrivers/media/video
++EXTRA_CFLAGS += -Idrivers/media/dvb/dvb-core
++EXTRA_CFLAGS += -Wno-unused-function -Wno-unused-variable
++ifeq ($(CONFIG_VIDEOBUF2_DMA_CONTIG),$(filter $(CONFIG_VIDEOBUF2_DMA_CONTIG),m y))
++EXTRA_CFLAGS += -DVBUF2_DMA_CONTIG_COMPAT
++endif
+diff --git a/drivers/video/ngrabber/ng-driver.c b/drivers/video/ngrabber/ng-driver.c
+new file mode 100644
+index 0000000..ba905e3
+--- /dev/null
++++ b/drivers/video/ngrabber/ng-driver.c
+@@ -0,0 +1,1870 @@
++#include <linux/types.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/init.h>
++#include <linux/kmod.h>
++#include <linux/mutex.h>
++#include <linux/pci.h>
++#include <linux/interrupt.h>
++#include <linux/videodev2.h>
++#include <linux/version.h>
++#include <linux/v4l2-dv-timings.h>
++#include <media/v4l2-device.h>
++#include <media/v4l2-dev.h>
++#include <media/v4l2-ioctl.h>
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0)
++#include <media/v4l2-dv-timings.h>
++#endif
++#include <media/v4l2-ctrls.h>
++#include <media/v4l2-event.h>
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
++#include <media/videobuf2-v4l2.h>
++#endif
++#include <media/videobuf2-dma-contig.h>
++#include <linux/firmware.h>
++#include <linux/sizes.h>
++#include <linux/crc32.h>
++#include <linux/proc_fs.h>
++
++#include "ng-regs.h"
++
++#ifdef VBUF2_DMA_CONTIG_COMPAT
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0) && (LINUX_VERSION_CODE < KERNEL_VERSION(3,11,0)))
++#include "videobuf2-dma-contig-3.10.c"
++#endif
++#endif
++
++
++
++MODULE_DESCRIPTION("V4L2 nanoGrabber/HDGrabberX Driver");
++MODULE_AUTHOR("AMP");
++MODULE_LICENSE("GPL v2");
++
++#define NG_DRIVER_VER 0x010400
++
++unsigned int vmode = 0; // 0-auto, 4=720p60, 16=1080p
++module_param(vmode, int, 0644);
++MODULE_PARM_DESC(vmode, "Select default videomode (0=Auto, 4=720p60, 5=1080i60, 16=1080p60, 19=720p50, 20=1080i50, 31=1080p50, 33=1080p25, 34=1080p30)");
++
++unsigned int ng_debug = 0;
++module_param(ng_debug, int, 0644);
++MODULE_PARM_DESC(ng_debug, "Debug verbosity level");
++
++static unsigned int video_nr[] = {[0 ... (16 - 1)] = -1 };
++module_param_array(video_nr, int, NULL, 0444);
++MODULE_PARM_DESC(video_nr, "video device number");
++
++#define GRABBER_PCI_VENDOR_ID_ 0x0907
++#define GRABBER_PCI_DEVICE_ID_ 0x0100
++
++#define SUBSYS_VENDOR_ID_NG	0x0907
++#define SUBSYS_DEVICE_ID_NGSDI	0x0001
++#define SUBSYS_DEVICE_ID_NGHDMI	0x0002
++#define SUBSYS_DEVICE_ID_HDGRABXSDI	0x0301
++#define SUBSYS_DEVICE_ID_HDGRABXHDMI	0x0302
++#define SUBSYS_DEVICE_ID_HDGRABXRGB	0x0303
++
++#define ng_write(adr,dat)    writel((dat), grab->iobase+(adr))
++#define ng_read(adr)         readl(grab->iobase+(adr))
++
++#define intc_write(adr,dat)		writel((dat), grab->iobase_intc+(adr))
++#define intc_read(adr)			readl(grab->iobase_intc+(adr))
++
++#define NUM_HW_BUFFERS	2	// Controls the number of HW buffers used by the DMA
++#define BIT_MASK_RANGE(a, b)	(((unsigned) -1 >> (31-(b))) & ~((1U <<(a)) - 1))
++#define HW_BUFFER_MASK	BIT_MASK_RANGE(0, NUM_HW_BUFFERS-1)
++
++static unsigned int ngrabber_num=0;
++static unsigned int ngrabber_devnum=0;
++
++struct grabber;
++
++struct grabchan {
++	struct grabber *grab;
++
++	struct v4l2_device v4l2_dev;
++	struct video_device vdev;
++	struct v4l2_ctrl_handler ctrl_handler;
++	struct mutex lock;
++	struct v4l2_dv_timings timings;
++	struct v4l2_pix_format format;
++
++	struct vb2_queue queue;
++	struct vb2_alloc_ctx *alloc_ctx;
++
++	spinlock_t qlock;
++	struct list_head buf_list;
++	unsigned field;
++	unsigned sequence;
++
++	int last_buffer;
++	int num_queued;
++	int num_done;
++	int chan;
++
++	u32 buffermask;
++	int startbuffer;
++	int numbuffers;
++
++};
++
++/**
++ * struct grabber - All internal data for one instance of device
++ * @pdev: PCI device
++ * @v4l2_dev: top-level v4l2 device struct
++ * @vdev: video node structure
++ * @ctrl_handler: control handler structure
++ * @lock: ioctl serialization mutex
++ * @std: current SDTV standard
++ * @timings: current HDTV timings
++ * @format: current pix format
++ * @input: current video input (0 = SDTV, 1 = HDTV)
++ * @queue: vb2 video capture queue
++ * @alloc_ctx: vb2 contiguous DMA context
++ * @qlock: spinlock controlling access to buf_list and sequence
++ * @buf_list: list of buffers queued for DMA
++ * @sequence: frame sequence counter
++ */
++struct grabber {
++	struct pci_dev *pdev;
++	struct grabchan channels[NG_MAX_CHANNELS];
++
++	unsigned char __iomem *iobase;
++	unsigned char __iomem *fwbase;
++	unsigned char __iomem *iobase_intc;
++
++	unsigned long bar1_iobase;
++	
++
++	struct semaphore fw_sem;
++	int fw_state;
++	wait_queue_head_t fw_wq;
++	struct proc_dir_entry	*named_dir;
++	char fwfile[32];
++	struct work_struct fw_ws;
++	int numchannels;
++	u32 enabled;
++	unsigned int nr;
++};
++
++struct ngrab_video_standards {
++	struct v4l2_dv_timings timings;
++	u16 vid_std;	//cea861 vic, smpte mode, something else?
++	u8 m_flag;
++};
++/*
++	* Because of the way this card works the video we get out is always
++	* progressive even if we have an interlaced input.
++*/
++
++// STANAG3350 Class A
++#define V4L2_DV_BT_CEA_960X809P60 { \
++	.type = V4L2_DV_BT_656_1120, \
++	V4L2_INIT_BT_TIMINGS(960, 816, 0, 0, \
++		30870000, 19, 62, 57, 9, 6, 46, 0, 0, 0, \
++		V4L2_DV_BT_STD_CEA861, 0 ) \
++}
++
++
++static const struct ngrab_video_standards ngrab_timings[]={	
++														{V4L2_DV_BT_CEA_1280X720P60, 4, 0},
++														{V4L2_DV_BT_CEA_1280X720P50, 19, 0},
++														{V4L2_DV_BT_CEA_1920X1080P24, 32, 0},
++														{V4L2_DV_BT_CEA_1920X1080P25, 33, 0},
++														{V4L2_DV_BT_CEA_1920X1080P30, 34, 0},
++														{V4L2_DV_BT_CEA_1920X1080P50, 31, 0},
++														{V4L2_DV_BT_CEA_1920X1080P60, 16, 0},
++														{V4L2_DV_BT_CEA_1920X1080P60, 5, 0},
++														{V4L2_DV_BT_CEA_1920X1080P50, 20, 0},
++														{V4L2_DV_BT_DMT_800X600P60, 0, 0},
++														{V4L2_DV_BT_DMT_1024X768P60, 0, 0},
++														{V4L2_DV_BT_DMT_1280X1024P60, 0, 0},
++														{V4L2_DV_BT_CEA_720X480P59_94, 6, 0},
++														{V4L2_DV_BT_CEA_720X576P50, 21, 0},
++														{V4L2_DV_BT_CEA_960X809P60, 0, 0}
++													};
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0)
++static const struct v4l2_dv_timings ngrab_dv_timings[]={
++														V4L2_DV_BT_CEA_1280X720P60,
++														V4L2_DV_BT_CEA_1280X720P50,
++														V4L2_DV_BT_CEA_1920X1080P24,
++														V4L2_DV_BT_CEA_1920X1080P25,
++														V4L2_DV_BT_CEA_1920X1080P30,
++														V4L2_DV_BT_CEA_1920X1080P50,
++														V4L2_DV_BT_CEA_1920X1080P60,
++														V4L2_DV_BT_CEA_1920X1080P60,
++														V4L2_DV_BT_CEA_1920X1080P50,
++														V4L2_DV_BT_DMT_800X600P60,
++														V4L2_DV_BT_DMT_1024X768P60,
++														V4L2_DV_BT_DMT_1280X1024P60,
++														V4L2_DV_BT_CEA_720X480P59_94,
++														V4L2_DV_BT_CEA_720X576P50, 
++														V4L2_DV_BT_CEA_960X809P60,
++														{},
++														};
++#endif
++
++struct grab_buffer {
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
++	struct vb2_v4l2_buffer vb;
++#else
++	struct vb2_buffer vb;
++#endif
++	struct list_head list;
++	int hw_buff_id;	// hw_buff this buffer assigned too
++};
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
++static inline struct grab_buffer *to_grab_buffer(struct vb2_v4l2_buffer *vb2)
++{
++	return container_of(vb2, struct grab_buffer, vb);
++}
++#else
++static inline struct grab_buffer *to_grab_buffer(struct vb2_buffer *vb2)
++{
++	return container_of(vb2, struct grab_buffer, vb);
++}
++#endif
++
++static const struct pci_device_id grabber_pci_tbl[] = {
++	{ PCI_DEVICE_SUB(GRABBER_PCI_VENDOR_ID_, GRABBER_PCI_DEVICE_ID_, SUBSYS_VENDOR_ID_NG, SUBSYS_DEVICE_ID_NGSDI) },
++	{ PCI_DEVICE_SUB(GRABBER_PCI_VENDOR_ID_, GRABBER_PCI_DEVICE_ID_, SUBSYS_VENDOR_ID_NG, SUBSYS_DEVICE_ID_NGHDMI) },
++	{ PCI_DEVICE_SUB(GRABBER_PCI_VENDOR_ID_, GRABBER_PCI_DEVICE_ID_, SUBSYS_VENDOR_ID_NG, SUBSYS_DEVICE_ID_HDGRABXSDI) },
++	{ PCI_DEVICE_SUB(GRABBER_PCI_VENDOR_ID_, GRABBER_PCI_DEVICE_ID_, SUBSYS_VENDOR_ID_NG, SUBSYS_DEVICE_ID_HDGRABXHDMI) },
++	{ PCI_DEVICE_SUB(GRABBER_PCI_VENDOR_ID_, GRABBER_PCI_DEVICE_ID_, SUBSYS_VENDOR_ID_NG, SUBSYS_DEVICE_ID_HDGRABXRGB) },
++	{ 0, }
++};
++MODULE_DEVICE_TABLE(pci, grabber_pci_tbl);
++
++static struct proc_dir_entry	*base_dir=NULL;
++
++
++
++/*
++ * HDTV: this structure has the capabilities of the HDTV receiver.
++ * It is used to constrain the huge list of possible formats based
++ * upon the hardware capabilities.
++ */
++static const struct v4l2_dv_timings_cap grab_timings_cap = {
++	.type = V4L2_DV_BT_656_1120,
++	/* keep this initialization for compatibility with GCC < 4.4.6 */
++	.reserved = { 0 },
++	V4L2_INIT_BT_TIMINGS(
++		640, 1920,		/* min/max width */
++		480, 1088,		/* min/max height */
++		27000000, 74250000,	/* min/max pixelclock*/
++		V4L2_DV_BT_STD_CEA861,	/* Supported standards */
++		/* capabilities */
++		V4L2_DV_BT_CAP_INTERLACED | V4L2_DV_BT_CAP_PROGRESSIVE
++	)
++};
++
++bool grab_gettimings_from_mode(struct v4l2_dv_timings *timings, u16 mode)
++{
++	int i;
++	if(mode==0)
++		return false;
++	for (i=0;i<sizeof(ngrab_timings)/sizeof(ngrab_timings[0]);i++)
++	{
++		if (ngrab_timings[i].vid_std==mode)
++		{
++			*timings=ngrab_timings[i].timings;
++			return true;
++		}
++	}
++	return false;
++}
++
++bool grab_gettimings_from_active(struct v4l2_dv_timings *timings, u16 hactive, u16 vactive)
++{
++	int i;
++	for (i=0;i<sizeof(ngrab_timings)/sizeof(ngrab_timings[0]);i++)
++	{
++		if ((ngrab_timings[i].timings.bt.width==hactive)&&(ngrab_timings[i].timings.bt.height==vactive))
++		{
++			*timings=ngrab_timings[i].timings;
++			return true;
++		}
++	}
++	return false;
++}
++
++#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,20)
++void grab_fw_tasklet(void *context)
++{
++	struct grabber *grab=(struct grabber *) context;
++#else
++void grab_fw_tasklet(struct work_struct *work)
++{
++	struct grabber *grab=container_of(work, struct grabber, fw_ws);
++#endif
++	int err;
++	u32 boardstatus=ng_read(NG_REG_BOARD_STATUS);
++	if (boardstatus==1)
++	{
++		if ((ng_read(NG_REG_ISR) & NG_INT_RESTORE)==NG_INT_RESTORE)
++		{
++			ng_write(NG_REG_ISR, ng_read(NG_REG_ISR) & ~NG_INT_RESTORE);
++			pci_write_config_word(grab->pdev, 0x80, 0x0000);
++			{
++				struct timespec64 now;
++				s64 ts;
++				getnstimeofday64(&now);
++#if __BITS_PER_LONG == 64
++				ts=timespec64_to_ns(&now)/1000;
++#else
++				ts=timespec64_to_ns(&now);
++				do_div(ts,1000);
++#endif
++				ng_write(NG_REG_SYSTIME, (u32)(ts & 0xffffffff));
++				ng_write(NG_REG_SYSTIME+4, (u32)((ts>>32) & 0xffffffff));
++				ng_write(NG_REG_INT_SOURCE, 4);
++				outl(1<<9, grab->bar1_iobase+0x2c);
++			}
++			
++		}
++		grab->fw_state=0;
++	}
++	else if (grab->fw_state>0)
++	{
++		schedule_work(&grab->fw_ws);
++	}
++}
++
++/*
++ * Interrupt handler: typically interrupts happen after a new frame has been
++ * captured. It is the job of the handler to remove the new frame from the
++ * internal list and give it back to the vb2 framework, updating the sequence
++ * counter, field and timestamp at the same time.
++ */
++static irqreturn_t grabber_irq(int irq, void *dev_id)
++{
++	struct grabber *grab = dev_id;
++	u32 isr;
++	u32 dmastatus;
++
++	/* handle interrupt */
++
++	/*
++	- Read ISR
++    - Read DMA Status
++    - Complete the buffer attached to the indicated BUFF(x)
++    - Updated BUFF(x) with the new buffer details
++    - Set x bit of BUF_ACK_STATUS to indicate that buffer ready for use.
++	*/
++
++	isr = ng_read(NG_REG_ISR);
++//	dev_info(&grab->pdev->dev, "*** ISR READ AS 0x%08x\n", isr);
++	if(!isr)
++		return IRQ_NONE;
++
++	if(isr == 0xffffffff)
++	{
++		dev_info(&grab->pdev->dev, "*** ISR READ AS 0x%08x\n", isr);
++		return IRQ_HANDLED;//?
++	}
++
++	if (isr & NG_INT_DMAERR)
++	{
++		u32 errorstatus=ng_read(NG_REG_DMAERR);
++		int buffer;
++		for (buffer=0;buffer<NG_MAX_BUFFERS;buffer++)
++		{
++			if (errorstatus & (1<<buffer))
++			{
++				dev_info(&grab->pdev->dev, "*** DMA error on buffer %i - status 0x%08x\n", buffer, ng_read(NG_REG_BUFF_STATUS(buffer)));
++			}
++		}
++		ng_write(NG_REG_DMAERR, 0);
++		
++	}
++	if(isr & NG_INT_DMA)
++	{
++		struct grab_buffer *buf;
++		int c;
++		dmastatus = ng_read(NG_REG_DMAINT);
++		//we use DMA channel 7 for the firmware transfer
++		if ((grab->fw_state==1) && ((dmastatus & 1<<7)==(1<<7)))
++		{
++			wake_up_interruptible(&grab->fw_wq);
++			dmastatus&=~(1<<7);
++			ng_write(NG_REG_DMAINT, dmastatus);
++		}
++		if (ng_debug)
++		{
++			dev_info(&grab->pdev->dev, "ISR: DMAINT: %08x\n", dmastatus);
++		}
++
++		for (c=0;c<grab->numchannels;c++)
++		{
++			// dmastatus is bitmask of completed buffers
++			while(dmastatus & (grab->channels[c].buffermask))
++			{
++				grab->channels[c].last_buffer++;
++				if(grab->channels[c].last_buffer >= (grab->channels[c].startbuffer+grab->channels[c].numbuffers))
++					grab->channels[c].last_buffer = grab->channels[c].startbuffer;
++
++				if(dmastatus & (0x01<<grab->channels[c].last_buffer))
++				{
++					// TODO: Compare buffer expected against actual hw_buff_id
++
++					/* Once a new frame has been captured, mark it as done like this: */
++					spin_lock(&grab->channels[c].qlock);
++
++					if(list_empty(&grab->channels[c].buf_list))
++					{
++						spin_unlock(&grab->channels[c].qlock);
++					}
++					else
++					{
++						buf = list_first_entry(&grab->channels[c].buf_list, struct grab_buffer, list);
++						if(buf)
++						{
++							list_del(&buf->list);
++							spin_unlock(&grab->channels[c].qlock);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,6,0)
++							buf->vb.vb2_buf.timestamp=ktime_get_ns();
++							buf->vb.sequence = grab->channels[c].sequence++;
++							buf->vb.field = grab->channels[c].field;
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
++							v4l2_get_timestamp(&buf->vb.timestamp);
++							buf->vb.sequence = grab->channels[c].sequence++;
++							buf->vb.field = grab->channels[c].field;
++#else
++							v4l2_get_timestamp(&buf->vb.v4l2_buf.timestamp);
++							buf->vb.v4l2_buf.sequence = grab->channels[c].sequence++;
++							buf->vb.v4l2_buf.field = grab->channels[c].field;
++#endif
++							if (grab->channels[c].format.field == V4L2_FIELD_ALTERNATE) {
++								if (grab->channels[c].field == V4L2_FIELD_BOTTOM)
++									grab->channels[c].field = V4L2_FIELD_TOP;
++								else if (grab->channels[c].field == V4L2_FIELD_TOP)
++									grab->channels[c].field = V4L2_FIELD_BOTTOM;
++							}
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
++							vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_DONE);
++#else
++							vb2_buffer_done(&buf->vb, VB2_BUF_STATE_DONE);
++#endif
++							grab->channels[c].num_done++;
++							if(ng_debug>1)
++								dev_info(&grab->pdev->dev, "DONE vb=%p id=%d\n", &buf->vb, buf->hw_buff_id);
++						} 
++						else 
++						{
++							spin_unlock(&grab->channels[c].qlock);
++						}
++					}
++
++					dmastatus &= ~(0x01<<grab->channels[c].last_buffer);
++					ng_write(NG_REG_DMAINT, dmastatus);
++				}
++			}
++		}
++	}
++
++	ng_write(NG_REG_ISR, 0);
++	// CLR_INT
++	intc_write(0xdc, 0x02);
++
++	return IRQ_HANDLED;
++}
++
++#if LINUX_VERSION_CODE>=KERNEL_VERSION(4,8,0)
++static int queue_setup(struct vb2_queue *vq,
++			   unsigned int *nbuffers, unsigned int *nplanes,
++			   unsigned int sizes[],struct device *alloc_devs[])
++#elif LINUX_VERSION_CODE>=KERNEL_VERSION(4,5,0)
++static int queue_setup(struct vb2_queue *vq,
++			   unsigned int *nbuffers, unsigned int *nplanes,
++			   unsigned int sizes[], void *alloc_ctxs[])
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
++static int queue_setup(struct vb2_queue *vq, const void *parg,
++		       unsigned int *nbuffers, unsigned int *nplanes,
++		       unsigned int sizes[], void *alloc_ctxs[])
++#else
++static int queue_setup(struct vb2_queue *vq, const struct v4l2_format *fmt,
++					   unsigned int *nbuffers, unsigned int *nplanes,
++					   unsigned int sizes[], void *alloc_ctxs[])
++#endif
++{
++#if LINUX_VERSION_CODE>=KERNEL_VERSION(4,5,0)
++	const struct v4l2_format *fmt = NULL;
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
++	const struct v4l2_format *fmt = parg;
++#endif
++	struct grabchan *channel= vb2_get_drv_priv(vq);
++
++	if (ng_debug>0)
++	{
++		dev_info(&channel->grab->pdev->dev, "queue_setup() nbuffers=%d\n", *nbuffers);
++	}
++
++	channel->field = channel->format.field;
++	if (channel->field == V4L2_FIELD_ALTERNATE) {
++		/*
++		 * You cannot use read() with FIELD_ALTERNATE since the field
++		 * information (TOP/BOTTOM) cannot be passed back to the user.
++		 */
++#if LINUX_VERSION_CODE>=KERNEL_VERSION(3,16,0)
++		if (vb2_fileio_is_active(vq))
++#else
++		if (vq->fileio)
++#endif
++			return -EINVAL;
++		channel->field = V4L2_FIELD_TOP;
++	}
++
++	//dev_info(&grab->pdev->dev, "vq->num_buffers=%d\n", vq->num_buffers);
++	/*
++	if (vq->num_buffers + *nbuffers < 2)
++		*nbuffers = 2 - vq->num_buffers;
++	*/
++	*nbuffers = 2;
++
++	if (fmt && fmt->fmt.pix.sizeimage < channel->format.sizeimage)
++		return -EINVAL;
++	*nplanes = 1;
++	sizes[0] = fmt ? fmt->fmt.pix.sizeimage : channel->format.sizeimage;
++#if LINUX_VERSION_CODE<KERNEL_VERSION(4,8,0)
++	alloc_ctxs[0] = channel->alloc_ctx;
++#endif
++	return 0;
++}
++
++/*
++ * Prepare the buffer for queueing to the DMA engine: check and set the
++ * payload size.
++ */
++static int buffer_prepare(struct vb2_buffer *vb)
++{
++	struct grabchan *channel = vb2_get_drv_priv(vb->vb2_queue);
++	unsigned long size = channel->format.sizeimage;
++
++	//dev_info(&grab->pdev->dev, "buffer_prepare(%p)\n", vb);
++
++	if (vb2_plane_size(vb, 0) < size) {
++		dev_err(&channel->grab->pdev->dev, "buffer too small (%lu < %lu)\n",
++			 vb2_plane_size(vb, 0), size);
++		return -EINVAL;
++	}
++
++	vb2_set_plane_payload(vb, 0, size);
++	return 0;
++}
++
++/*
++ * Queue this buffer to the DMA engine.
++ */
++static void buffer_queue(struct vb2_buffer *vb)
++{
++	struct grabchan *channel = vb2_get_drv_priv(vb->vb2_queue);
++	struct grabber *grab = channel->grab;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
++	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
++	struct grab_buffer *buf = to_grab_buffer(vbuf);
++#else
++	struct grab_buffer *buf = to_grab_buffer(vb);
++#endif
++	struct grab_buffer *prev = NULL;
++	unsigned long flags;
++	dma_addr_t addr;
++	unsigned long size;
++
++	//dev_info(&grab->pdev->dev, "buffer_queue(%p) size=%li\n", vb, vb2_plane_size(vb, 0));
++
++	spin_lock_irqsave(&channel->qlock, flags);
++
++	if(list_empty(&channel->buf_list))
++	{
++		buf->hw_buff_id = channel->startbuffer;
++	}
++	else
++	{
++		prev = list_last_entry(&channel->buf_list, struct grab_buffer, list);
++		buf->hw_buff_id = prev->hw_buff_id + 1;
++		if(buf->hw_buff_id >= (channel->startbuffer+channel->numbuffers))
++			buf->hw_buff_id = channel->startbuffer;
++	}
++
++	list_add_tail(&buf->list, &channel->buf_list);
++
++	/*
++	 * - Programm BUFF(n) reg
++	 * - Set BUF_ACK_STATUS to indicate buffer ready
++	 */
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
++	 addr=vb2_dma_contig_plane_dma_addr(&buf->vb.vb2_buf, 0);
++	 size=vb2_plane_size(&buf->vb.vb2_buf, 0);
++#else
++	 addr=vb2_dma_contig_plane_dma_addr(&buf->vb, 0);
++	 size=vb2_plane_size(&buf->vb, 0);
++#endif
++	ng_write(NG_REG_BUFF_ADDR_L(buf->hw_buff_id), (addr & 0xffffffff));
++	ng_write(NG_REG_BUFF_ADDR_H(buf->hw_buff_id), ((addr>>32) & 0xffffffff));
++	ng_write(NG_REG_BUFF_SIZE(buf->hw_buff_id), size);
++	if (ng_read(NG_REG_VERSION)==1)
++	{
++		ng_write(NG_REG_BUFF_CHANNEL(buf->hw_buff_id), (channel->chan));
++	}
++	else
++	{
++		ng_write(NG_REG_BUFF_CHANNEL(buf->hw_buff_id), (1<<channel->chan));
++	}
++	ng_write(NG_REG_BUFF_STATUS(buf->hw_buff_id), 0x00000001);
++
++	channel->num_queued++;
++
++	if(ng_debug>1)
++		dev_info(&channel->grab->pdev->dev, "buffer_queue(%p:%llx) size=%li prev=%p id=%d Tqueued=%d\n",
++			vb, addr,
++			size, prev, buf->hw_buff_id, channel->num_queued);
++
++	spin_unlock_irqrestore(&channel->qlock, flags);
++}
++
++static void return_all_buffers(struct grabchan *channel,
++			       enum vb2_buffer_state state)
++{
++	struct grabber *grab = channel->grab;
++	struct grab_buffer *buf, *node;
++	unsigned long flags;
++
++	spin_lock_irqsave(&channel->qlock, flags);
++	list_for_each_entry_safe(buf, node, &channel->buf_list, list) {
++		ng_write(NG_REG_BUFF_ADDR_L(buf->hw_buff_id), 0x0);
++		ng_write(NG_REG_BUFF_SIZE(buf->hw_buff_id), 0x0);
++		ng_write(NG_REG_BUFF_STATUS(buf->hw_buff_id), 0x0);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
++		vb2_buffer_done(&buf->vb.vb2_buf, state);
++#else
++		vb2_buffer_done(&buf->vb, state);
++#endif
++		list_del(&buf->list);
++	}
++	spin_unlock_irqrestore(&channel->qlock, flags);
++}
++
++/*
++ * Start streaming. First check if the minimum number of buffers have been
++ * queued. If not, then return -ENOBUFS and the vb2 framework will call
++ * this function again the next time a buffer has been queued until enough
++ * buffers are available to actually start the DMA engine.
++ */
++static int start_streaming(struct vb2_queue *vq, unsigned int count)
++{
++	struct grabchan *channel = vb2_get_drv_priv(vq);
++	struct grabber *grab = channel->grab;
++	int ret = 0;
++
++	channel->sequence = 0;
++	channel->last_buffer = -1;
++
++	if (ng_debug>0)
++	{
++		dev_info(&channel->grab->pdev->dev, "start_streaming()");
++	}
++	if ((ng_read(NG_REG_ISR) & NG_INT_RESTORE)==NG_INT_RESTORE)
++	{
++		ng_write(NG_REG_ISR, ng_read(NG_REG_ISR) & ~NG_INT_RESTORE);
++		pci_write_config_word(channel->grab->pdev, 0x80, 0x0000);
++	}
++	
++	grab->enabled|=1<<channel->chan;
++	ng_write(NG_REG_IER, NG_INT_DMA);
++	ng_write(NG_REG_VID_OUT_CTRL(channel->chan), 0x0000001);
++	if (ret) {
++		/*
++		 * In case of an error, return all active buffers to the
++		 * QUEUED state
++		 */
++		return_all_buffers(channel, VB2_BUF_STATE_QUEUED);
++	}
++	return ret;
++}
++
++/*
++ * Stop the DMA engine. Any remaining buffers in the DMA queue are dequeued
++ * and passed on to the vb2 framework marked as STATE_ERROR.
++ */
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
++static void stop_streaming(struct vb2_queue *vq)
++#else
++static int stop_streaming(struct vb2_queue *vq)
++#endif
++{
++	struct grabchan *channel = vb2_get_drv_priv(vq);
++	struct grabber *grab = channel->grab;
++
++	/* TODO: stop DMA */
++	ng_write(NG_REG_VID_OUT_CTRL(channel->chan), 0x0);
++	grab->enabled&=~(1<<channel->chan);
++	if (grab->enabled==0)
++	{
++		ng_write(NG_REG_IER, 0);
++	}
++
++	if (ng_debug>0)
++	{
++		dev_info(&channel->grab->pdev->dev, "stop_streaming()");
++		dev_info(&channel->grab->pdev->dev, "queued=%d done=%d\n", channel->num_queued, channel->num_done);
++	}
++	channel->num_queued = 0;
++	channel->num_done = 0;
++
++	/* Release all active buffers */
++	return_all_buffers(channel, VB2_BUF_STATE_ERROR);
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3,16,0)
++	return 0;
++#endif	
++}
++
++/*
++ * The vb2 queue ops. Note that since q->lock is set we can use the standard
++ * vb2_ops_wait_prepare/finish helper functions. If q->lock would be NULL,
++ * then this driver would have to provide these ops.
++ */
++static struct vb2_ops grab_qops = {
++	.queue_setup		= queue_setup,
++	.buf_prepare		= buffer_prepare,
++	.buf_queue			= buffer_queue,
++	.start_streaming	= start_streaming,
++	.stop_streaming		= stop_streaming,
++	.wait_prepare		= vb2_ops_wait_prepare,
++	.wait_finish		= vb2_ops_wait_finish,
++};
++
++/*
++ * Required ioctl querycap. Note that the version field is prefilled with
++ * the version of the kernel.
++ */
++static int grabber_querycap(struct file *file, void *priv,
++			     struct v4l2_capability *cap)
++{
++	struct grabchan *channel = video_drvdata(file);
++
++	strlcpy(cap->driver, KBUILD_MODNAME, sizeof(cap->driver));
++	strlcpy(cap->card, "nanoGrabber-HD", sizeof(cap->card));
++	snprintf(cap->bus_info, sizeof(cap->bus_info), "PCI:%s",
++		 pci_name(channel->grab->pdev));
++	cap->device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_READWRITE |
++			   V4L2_CAP_STREAMING;
++	cap->capabilities = cap->device_caps | V4L2_CAP_DEVICE_CAPS;
++	return 0;
++}
++
++/*
++ * Helper function to check and correct struct v4l2_pix_format. It's used
++ * not only in VIDIOC_TRY/S_FMT, but also elsewhere if changes to the SDTV
++ * standard, HDTV timings or the video input would require updating the
++ * current format.
++ */
++static void grabber_fill_pix_format(struct grabchan *channel,
++				     struct v4l2_pix_format *pix)
++{
++	struct grabber *grab = channel->grab;
++	
++	u32 u32Format=ng_read(NG_REG_VID_OUT_FMT(channel->chan));
++	if (u32Format==0x36315659)	//YUV422
++	{
++		pix->pixelformat = V4L2_PIX_FMT_YUYV ;
++		/* HDMI input */
++		pix->width = channel->timings.bt.width;
++//		pix->height = channel->timings.bt.height;
++		pix->height = ((channel->timings.bt.height+15)>>4)<<4;
++		if (channel->timings.bt.interlaced) {
++			pix->field = V4L2_FIELD_ALTERNATE;
++			pix->height /= 2;
++		} else {
++			pix->field = V4L2_FIELD_NONE;
++		}
++		pix->colorspace = V4L2_COLORSPACE_REC709;
++
++		pix->bytesperline = pix->width*2; /* Y plane */
++		pix->sizeimage = (pix->width * pix->height * 2); // (width * height * bpp) / 8
++	}
++	else
++	{
++		// We will be YUV420 Planar
++		pix->pixelformat = V4L2_PIX_FMT_YUV420;
++		/* HDMI input */
++		pix->width = channel->timings.bt.width;
++//		pix->height = channel->timings.bt.height;
++		pix->height = ((channel->timings.bt.height+15)>>4)<<4;
++		
++		if (channel->timings.bt.interlaced) {
++			pix->field = V4L2_FIELD_ALTERNATE;
++			pix->height /= 2;
++		} else {
++			pix->field = V4L2_FIELD_NONE;
++		}
++		pix->colorspace = V4L2_COLORSPACE_REC709;
++
++		pix->bytesperline = pix->width; /* Y plane */
++		pix->sizeimage = (pix->width * pix->height * 12) >> 3; // (width * height * bpp) / 8
++	}
++	pix->priv = 0;
++}
++
++static int grabber_try_fmt_vid_cap(struct file *file, void *priv,
++				    struct v4l2_format *f)
++{
++	struct grabchan *channel = video_drvdata(file);
++	struct grabber *grab = channel->grab;
++	struct v4l2_pix_format *pix = &f->fmt.pix;
++	u32 u32Format=ng_read(NG_REG_VID_OUT_FMT(channel->chan));
++
++	dev_info(&channel->grab->pdev->dev, "_try_fmt_vid_cap() - w=%d h=%d\n",
++				f->fmt.pix.width, f->fmt.pix.height);
++
++	/*
++	 * Due to historical reasons providing try_fmt with an unsupported
++	 * pixelformat will return -EINVAL for video receivers. Webcam drivers,
++	 * however, will silently correct the pixelformat. Some video capture
++	 * applications rely on this behavior...
++	 */
++	if ((u32Format==0x36315659)	&&  (pix->pixelformat != V4L2_PIX_FMT_YUYV))
++		return -EINVAL;
++	else if (pix->pixelformat != V4L2_PIX_FMT_YUV420)
++		return -EINVAL;
++	grabber_fill_pix_format(channel, pix);
++	return 0;
++}
++
++static int grabber_s_fmt_vid_cap(struct file *file, void *priv,
++				  struct v4l2_format *f)
++{
++	struct grabchan *channel = video_drvdata(file);
++	int ret;
++
++	
++	dev_info(&channel->grab->pdev->dev, "_s_fmt_vid_cap() - w=%d h=%d\n",
++				f->fmt.pix.width, f->fmt.pix.height);
++				
++
++	ret = grabber_try_fmt_vid_cap(file, priv, f);
++	if (ret)
++		return ret;
++
++	/*
++	 * It is not allowed to change the format while buffers for use with
++	 * streaming have already been allocated.
++	 */
++	if (vb2_is_busy(&channel->queue))
++		return -EBUSY;
++
++	/* TODO: change format */
++	/*
++	{
++		static const struct v4l2_dv_timings timings_1080p = V4L2_DV_BT_CEA_1920X1080P30;
++		channel->timings = timings_1080p;
++		grabber_fill_pix_format(grab, &grab->format);
++	}
++	*/
++
++	channel->format = f->fmt.pix;
++	return 0;
++}
++
++static int grabber_g_fmt_vid_cap(struct file *file, void *priv,
++				  struct v4l2_format *f)
++{
++	struct grabchan *channel = video_drvdata(file);
++	dev_info(&channel->grab->pdev->dev, "_g_fmt_vid_cap() - w=%d h=%d\n", 
++		channel->format.width, channel->format.height);
++
++	f->fmt.pix = channel->format;
++	return 0;
++}
++
++static int grabber_enum_fmt_vid_cap(struct file *file, void *priv,
++				     struct v4l2_fmtdesc *f)
++{
++	struct grabchan *channel = video_drvdata(file);
++	struct grabber *grab = channel->grab;
++
++	u32 u32Format=ng_read(NG_REG_VID_OUT_FMT(channel->chan));
++	if (f->index != 0)
++		return -EINVAL;
++	if (u32Format==0x36315659)	//YUV422
++		f->pixelformat = V4L2_PIX_FMT_YUYV;
++	else
++		f->pixelformat = V4L2_PIX_FMT_YUV420;
++	return 0;
++}
++
++static int grabber_s_std(struct file *file, void *priv, v4l2_std_id std)
++{
++	struct grabchan *channel = video_drvdata(file);
++
++	/* S_STD is not supported on the HD input */
++	return -ENODATA;
++}
++
++static int grabber_g_std(struct file *file, void *priv, v4l2_std_id *std)
++{
++	struct grabchan *channel = video_drvdata(file);
++
++	/* G_STD is not supported on the HI input */
++	return -ENODATA;
++}
++
++static int grabber_querystd(struct file *file, void *priv, v4l2_std_id *std)
++{
++	struct grabchan *channel = video_drvdata(file);
++
++	/* QUERY_STD is not supported on the HD input */
++	return -ENODATA;
++}
++
++static int grabber_s_dv_timings(struct file *file, void *_fh,
++				 struct v4l2_dv_timings *timings)
++{
++	struct grabchan *channel = video_drvdata(file);
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0)
++	int i;
++#endif
++
++	/* S_DV_TIMINGS is not supported on the SD input */
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0)
++	/* Quick sanity check */
++	if (!v4l2_valid_dv_timings(timings, &grab_timings_cap, NULL, NULL))
++		return -EINVAL;
++
++	/* Check if the timings are part of the CEA-861 timings. */
++	if (!v4l2_find_dv_timings_cap(timings, &grab_timings_cap,
++				      0, NULL, NULL))
++		return -EINVAL;
++		
++#else
++	if ((timings->bt.pixelclock<grab_timings_cap.bt.min_pixelclock) ||
++		(timings->bt.pixelclock>grab_timings_cap.bt.max_pixelclock) ||
++ 		(timings->bt.height < grab_timings_cap.bt.min_height) ||
++	    (timings->bt.height > grab_timings_cap.bt.max_height) ||
++	    (timings->bt.width < grab_timings_cap.bt.min_width) ||
++	    (timings->bt.width > grab_timings_cap.bt.max_width))
++		return -EINVAL;		
++
++	for (i=0;i<sizeof(ngrab_timings)/sizeof(ngrab_timings[0]);i++) {
++		if (v4l_match_dv_timings(timings, &ngrab_timings[i].timings, 0)) {
++			*timings = ngrab_timings[i].timings;
++			break;
++		}
++	}		
++#endif
++
++	/* Return 0 if the new timings are the same as the current timings. */
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,5,0)
++	if (v4l2_match_dv_timings(timings, &channel->timings, 0, 1))
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0)
++	if (v4l2_match_dv_timings(timings, &channel->timings, 0))
++#else
++	if (v4l_match_dv_timings(timings, &channel->timings, 0))
++#endif
++		return 0;
++
++	/*
++	 * Changing the timings implies a format change, which is not allowed
++	 * while buffers for use with streaming have already been allocated.
++	 */
++	if (vb2_is_busy(&channel->queue))
++		return -EBUSY;
++
++	/* TODO: Configure new timings */
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0)
++	/* Useful for debugging */
++	v4l2_print_dv_timings(channel->v4l2_dev.name, "s_dv_timings:",
++			timings, true);
++#endif
++
++	/* REALLY WE AREN'T GOING TO HAVE THE ABILITY TO SET THESE */
++
++	/* Save timings */
++	channel->timings = *timings;
++
++	/* Update the internal format */
++	grabber_fill_pix_format(channel, &channel->format);
++	return 0;
++}
++
++static int grabber_g_dv_timings(struct file *file, void *_fh,
++				 struct v4l2_dv_timings *timings)
++{
++	struct grabchan *channel = video_drvdata(file);
++
++	/* G_DV_TIMINGS is not supported on the SD input */
++
++	*timings = channel->timings;
++	return 0;
++}
++
++static int grabber_enum_dv_timings(struct file *file, void *_fh,
++				    struct v4l2_enum_dv_timings *timings)
++{
++	struct grabchan *channel = video_drvdata(file);
++
++	/* ENUM_DV_TIMINGS is not supported on the S-Video input */
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0)
++	return v4l2_enum_dv_timings_cap(timings, &grab_timings_cap,
++					NULL, NULL);
++#else
++	if (timings->index >= ARRAY_SIZE(ngrab_dv_timings))
++		return -EINVAL;
++
++	memset(timings->reserved, 0, sizeof(timings->reserved));
++	timings->timings = ngrab_dv_timings[timings->index];					
++#endif
++	return 0;
++}
++
++/*
++ * Query the current timings as seen by the hardware. This function shall
++ * never actually change the timings, it just detects and reports.
++ * If no signal is detected, then return -ENOLINK. If the hardware cannot
++ * lock to the signal, then return -ENOLCK. If the signal is out of range
++ * of the capabilities of the system (e.g., it is possible that the receiver
++ * can lock but that the DMA engine it is connected to cannot handle
++ * pixelclocks above a certain frequency), then -ERANGE is returned.
++ */
++static int grabber_query_dv_timings(struct file *file, void *_fh,
++				     struct v4l2_dv_timings *timings)
++{
++	struct grabchan *channel = video_drvdata(file);
++	struct grabber *grab=channel->grab;
++	u32 status=0;
++	u32 mode=0;
++	u16 hactive=0;
++	u16 vactive=0;
++	bool found=false;
++
++	dev_info(&channel->grab->pdev->dev, "_query_dv_timings()\n");
++
++
++	/* QUERY_DV_TIMINGS is not supported on the SD input */
++
++	status = ng_read(NG_REG_VID_IN_STATUS(channel->chan));
++	if ((status & 0x0a)!=0)
++	{
++		return -ENOLCK;
++	}
++	mode=ng_read(NG_REG_VID_IN_MODE(channel->chan));
++	hactive=ng_read(NG_REG_VID_IN_HACTIVE(channel->chan));
++	vactive=ng_read(NG_REG_VID_IN_VACTIVE(channel->chan));
++	if (mode>0)
++	{
++		found=grab_gettimings_from_mode(timings, mode);
++		if (!found)
++		{
++			dev_info(&grab->pdev->dev, "failed to find timings for mode %i", mode);
++		}
++	}
++	if (!found)
++	{
++/*		u16 hactive=ng_read(NG_REG_VID_IN_HACTIVE(channel->chan));
++		if (hactive==1920)
++		{
++			found=grab_gettimings_from_mode(timings, 16);	//16=1080p60
++		}
++		else if (hactive==1280)
++		{
++			found=grab_gettimings_from_mode(timings, 4);	//4=720p60
++		}
++		else*/
++		{
++			found=grab_gettimings_from_active(timings, hactive, vactive);
++			if (!found)
++			{
++				dev_info(&grab->pdev->dev, "failed to find timings to hactive:%i vactive: %i", hactive, vactive);
++			}
++		}
++	}	
++#ifdef TODO
++
++	/*
++	 * Query currently seen timings. This function should look
++	 * something like this:
++	 */
++
++	 /*
++	  * Will have a status register that indicates HLOCK / VLOCK
++	  */
++	detect_timings();
++	if (no_signal)
++		return -ENOLINK;
++	if (cannot_lock_to_signal)
++		return -ENOLCK;
++	if (signal_out_of_range_of_capabilities)
++		return -ERANGE;
++#endif
++
++
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0)
++	/* Useful for debugging */
++	v4l2_print_dv_timings(channel->v4l2_dev.name, "query_dv_timings:",
++			timings, true);
++#endif
++	return 0;
++}
++
++static int grabber_dv_timings_cap(struct file *file, void *fh,
++				   struct v4l2_dv_timings_cap *cap)
++{
++	struct grabchan *channel = video_drvdata(file);
++
++	dev_info(&channel->grab->pdev->dev, "_query_dv_timings_cap()\n");
++
++	/* DV_TIMINGS_CAP is not supported on the SD input */
++	*cap = grab_timings_cap;
++	return 0;
++}
++
++static int grabber_enum_input(struct file *file, void *priv,
++			       struct v4l2_input *i)
++{
++	if (i->index > 1)
++		return -EINVAL;
++
++	i->type = V4L2_INPUT_TYPE_CAMERA;
++	i->std = 0;
++	strlcpy(i->name, "HD-SDI", sizeof(i->name));
++	i->capabilities = V4L2_IN_CAP_DV_TIMINGS;
++	return 0;
++}
++
++static int grabber_s_input(struct file *file, void *priv, unsigned int i)
++{
++	struct grabchan *channel = video_drvdata(file);
++
++	if (i > 1)
++		return -EINVAL;
++
++	return 0;
++}
++
++static int grabber_g_input(struct file *file, void *priv, unsigned int *i)
++{
++	struct grabchan *channel = video_drvdata(file);
++
++	*i = 0;
++	return 0;
++}
++
++static int grabber_g_parm(struct file *file, void *fh, struct v4l2_streamparm *parm)
++{
++	struct grabchan *channel = video_drvdata(file);
++	struct grabber *grab = channel->grab;
++
++	if (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
++		return -EINVAL;
++	parm->parm.capture.readbuffers = 2;
++	parm->parm.capture.timeperframe.numerator=ng_read(NG_REG_VID_IN_FPS_SCALE(channel->chan));
++	parm->parm.capture.timeperframe.denominator=ng_read(NG_REG_VID_IN_FPS_RATE(channel->chan));
++	return 0;
++}
++
++/* ------------------------------------------------------------------
++	File operations for the device
++   ------------------------------------------------------------------*/
++
++/*
++ * The set of all supported ioctls. Note that all the streaming ioctls
++ * use the vb2 helper functions that take care of all the locking and
++ * that also do ownership tracking (i.e. only the filehandle that requested
++ * the buffers can call the streaming ioctls, all other filehandles will
++ * receive -EBUSY if they attempt to call the same streaming ioctls).
++ *
++ * The last three ioctls also use standard helper functions: these implement
++ * standard behavior for drivers with controls.
++ */
++static const struct v4l2_ioctl_ops grab_ioctl_ops = {
++	.vidioc_querycap = grabber_querycap,
++	.vidioc_try_fmt_vid_cap = grabber_try_fmt_vid_cap,
++	.vidioc_s_fmt_vid_cap = grabber_s_fmt_vid_cap,
++	.vidioc_g_fmt_vid_cap = grabber_g_fmt_vid_cap,
++	.vidioc_enum_fmt_vid_cap = grabber_enum_fmt_vid_cap,
++
++	.vidioc_g_std = grabber_g_std,
++	.vidioc_s_std = grabber_s_std,
++	.vidioc_querystd = grabber_querystd,
++
++	.vidioc_s_dv_timings = grabber_s_dv_timings,
++	.vidioc_g_dv_timings = grabber_g_dv_timings,
++	.vidioc_enum_dv_timings = grabber_enum_dv_timings,
++	.vidioc_query_dv_timings = grabber_query_dv_timings,
++	.vidioc_dv_timings_cap = grabber_dv_timings_cap,
++
++	.vidioc_enum_input = grabber_enum_input,
++	.vidioc_g_input = grabber_g_input,
++	.vidioc_s_input = grabber_s_input,
++
++	.vidioc_reqbufs = vb2_ioctl_reqbufs,
++	.vidioc_create_bufs = vb2_ioctl_create_bufs,
++	.vidioc_querybuf = vb2_ioctl_querybuf,
++	.vidioc_qbuf = vb2_ioctl_qbuf,
++	.vidioc_dqbuf = vb2_ioctl_dqbuf,
++	.vidioc_expbuf = vb2_ioctl_expbuf,
++	.vidioc_streamon = vb2_ioctl_streamon,
++	.vidioc_streamoff = vb2_ioctl_streamoff,
++
++	.vidioc_log_status = v4l2_ctrl_log_status,
++	.vidioc_subscribe_event = v4l2_ctrl_subscribe_event,
++	.vidioc_unsubscribe_event = v4l2_event_unsubscribe,
++
++	.vidioc_g_parm = grabber_g_parm,
++};
++
++/*
++ * The set of file operations. Note that all these ops are standard core
++ * helper functions.
++ */
++static const struct v4l2_file_operations grab_fops = {
++	.owner = THIS_MODULE,
++	.open = v4l2_fh_open,
++	.release = vb2_fop_release,
++	.unlocked_ioctl = video_ioctl2,
++	.read = vb2_fop_read,
++	.mmap = vb2_fop_mmap,
++	.poll = vb2_fop_poll,
++};
++static int dumpregs(struct grabber *grab)
++{
++	int buffer;
++	dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_BOARDID, ng_read(NG_REG_BOARDID));	
++	dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VERSION, ng_read(NG_REG_VERSION));
++	dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_ISR, ng_read(NG_REG_ISR));
++	dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_IER, ng_read(NG_REG_IER));
++	dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_DMAINT, ng_read(NG_REG_DMAINT));
++	dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_TIMESTAMP, ng_read(NG_REG_TIMESTAMP));
++	dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_FIRMWARE_VERSION, ng_read(NG_REG_FIRMWARE_VERSION));
++	dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_MODECHANGE, ng_read(NG_REG_MODECHANGE));
++	dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_FIRMWARE_CRC, ng_read(NG_REG_FIRMWARE_CRC));
++	dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_FIRMWARE_SIZE, ng_read(NG_REG_FIRMWARE_SIZE));
++	dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_INT_SOURCE, ng_read(NG_REG_INT_SOURCE));
++	
++	for (buffer=0;buffer<8;buffer++)
++	{
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_BUFF_ADDR_L(buffer), ng_read(NG_REG_BUFF_ADDR_L(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_BUFF_ADDR_H(buffer), ng_read(NG_REG_BUFF_ADDR_H(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_BUFF_SIZE(buffer), ng_read(NG_REG_BUFF_SIZE(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_BUFF_FLAG(buffer), ng_read(NG_REG_BUFF_FLAG(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_BUFF_HEAD(buffer), ng_read(NG_REG_BUFF_HEAD(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_BUFF_TAIL(buffer), ng_read(NG_REG_BUFF_TAIL(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_BUFF_STATUS(buffer), ng_read(NG_REG_BUFF_STATUS(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_BUFF_CHANNEL(buffer), ng_read(NG_REG_BUFF_CHANNEL(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_BUFF_TIMESTAMP_L(buffer), ng_read(NG_REG_BUFF_TIMESTAMP_L(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_BUFF_TIMESTAMP_H(buffer), ng_read(NG_REG_BUFF_TIMESTAMP_H(buffer)));
++
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_OUT_FMT(buffer), ng_read(NG_REG_VID_OUT_FMT(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_OUT_HACTIVE(buffer), ng_read(NG_REG_VID_OUT_HACTIVE(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_OUT_HSTART(buffer), ng_read(NG_REG_VID_OUT_HSTART(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_OUT_HTOTAL(buffer), ng_read(NG_REG_VID_OUT_HTOTAL(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_OUT_VACTIVE(buffer), ng_read(NG_REG_VID_OUT_VACTIVE(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_OUT_VSTART(buffer), ng_read(NG_REG_VID_OUT_VSTART(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_OUT_VTOTAL(buffer), ng_read(NG_REG_VID_OUT_VTOTAL(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_OUT_PITCH(buffer), ng_read(NG_REG_VID_OUT_PITCH(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_OUT_CTRL(buffer), ng_read(NG_REG_VID_OUT_CTRL(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_OUT_FPS_RATE(buffer), ng_read(NG_REG_VID_OUT_FPS_RATE(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_OUT_FPS_SCALE(buffer), ng_read(NG_REG_VID_OUT_FPS_SCALE(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_OUT_FLAGS(buffer), ng_read(NG_REG_VID_OUT_FLAGS(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_IN_HACTIVE(buffer), ng_read(NG_REG_VID_IN_HACTIVE(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_IN_HSTART(buffer), ng_read(NG_REG_VID_IN_HSTART(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_IN_HTOTAL(buffer), ng_read(NG_REG_VID_IN_HTOTAL(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_IN_VACTIVE(buffer), ng_read(NG_REG_VID_IN_VACTIVE(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_IN_VSTART(buffer), ng_read(NG_REG_VID_IN_VSTART(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_IN_VTOTAL(buffer), ng_read(NG_REG_VID_IN_VTOTAL(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_IN_FPS_RATE(buffer), ng_read(NG_REG_VID_IN_FPS_RATE(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_IN_FPS_SCALE(buffer), ng_read(NG_REG_VID_IN_FPS_SCALE(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_IN_STATUS(buffer), ng_read(NG_REG_VID_IN_STATUS(buffer)));
++		dev_info(&grab->pdev->dev, "Reg: %08x Val: %08x\n", NG_REG_VID_IN_MODE(buffer), ng_read(NG_REG_VID_IN_MODE(buffer)));
++	}
++	return 0;
++}
++
++static int resetregs(struct grabber *grab)
++{
++	int buffer;
++	ng_write(NG_REG_ISR, 0);
++	ng_write(NG_REG_IER, 0);
++	ng_write(NG_REG_DMAINT, 0);
++	ng_write(NG_REG_INT_SOURCE, 0);
++	
++	for (buffer=0;buffer<8;buffer++)
++	{
++		ng_write(NG_REG_BUFF_ADDR_L(buffer), 0);
++		ng_write(NG_REG_BUFF_ADDR_H(buffer), 0);
++		ng_write(NG_REG_BUFF_SIZE(buffer), 0);
++		ng_write(NG_REG_BUFF_FLAG(buffer), 0);
++		ng_write(NG_REG_BUFF_STATUS(buffer), 0);
++		ng_write(NG_REG_BUFF_CHANNEL(buffer), 0);
++	}
++	return 0;
++}
++
++
++void grabber_fw_cb(const struct firmware *fw, void *context)
++{
++	struct grabber *grab=(struct grabber *)context;
++	u32 crc_final=0;
++	u32 crc_initial=0;
++	
++	if (fw==NULL)
++	{
++		dev_err(&grab->pdev->dev, "No firmware given\n");
++		return;
++	}
++	if ((fw->data==NULL)||(fw->size==0))
++	{
++		dev_err(&grab->pdev->dev, "Firmware empty: %p %Zu\n", fw->data, fw->size);
++		release_firmware(fw);
++		return;
++	}
++	if (down_interruptible(&grab->fw_sem))
++	{
++		dev_err(&grab->pdev->dev, "Failed to obtain firmware semaphore\n");
++		release_firmware(fw);
++		grab->fw_state=-1;
++		return;
++	}
++	grab->fw_state=1;
++	if(ng_debug>1)
++	{
++		dev_info(&grab->pdev->dev, "firmware read %Zu bytes\n", fw->size);
++	}
++	crc_final = crc32(crc_initial ^ 0xffffffff, fw->data, fw->size) ^ 0xffffffff;
++	if(ng_debug>1)
++	{
++		dev_info(&grab->pdev->dev, "crc32 of data: %08x\n", crc_final);
++	}
++	ng_write(NG_REG_FIRMWARE_CRC, crc_final);
++	ng_write(NG_REG_FIRMWARE_SIZE, fw->size);
++	ng_write(NG_REG_IER, NG_INT_DMA);
++	{
++		u32 todo=fw->size;
++		u32 offset=0;
++		while(todo>0)
++		{
++			u32 size=todo;
++			int ret;
++			if(ng_debug>2)
++			{
++				dev_info(&grab->pdev->dev, "todo: %i\n", todo);
++			}
++			if (todo>NG_FW_CHUNKSIZE)
++			{
++				size=NG_FW_CHUNKSIZE;
++			}		
++			ng_write(NG_REG_BUFF_SIZE(7), size);	//chunk size
++			ng_write(NG_REG_BUFF_CHANNEL(7), 0xff);
++			memcpy(grab->fwbase, fw->data+offset, size);
++			todo-=size;
++			offset+=size;
++
++			ng_write(NG_REG_BUFF_STATUS(7), 0x00000001);
++			ng_write(NG_REG_INT_SOURCE, NG_INT_SRC_FW);
++			outl(1<<9, grab->bar1_iobase+0x2c);
++
++			//we could now wait for the DMA done interrupt but lets poll for now
++			if ((ret=wait_event_interruptible_timeout(grab->fw_wq, (ng_read(NG_REG_BUFF_STATUS(7))==0), 10*HZ))<=0)
++			{
++				dev_err(&grab->pdev->dev, "Timed out waiting for firmware buffer done ret: %i  status: %x\n", ret, ng_read(NG_REG_BUFF_STATUS(7)));
++				ng_write(NG_REG_FIRMWARE_SIZE, 0);
++				ng_write(NG_REG_FIRMWARE_CRC, 0);
++				break;
++			}
++		}
++	}
++	if ((ng_read(NG_REG_FIRMWARE_CRC)==0) && (ng_read(NG_REG_FIRMWARE_SIZE)!=0))
++	{
++		grab->fw_state=2;
++		schedule_work(&grab->fw_ws);
++	}
++	else
++	{
++		dev_err(&grab->pdev->dev, "Firmware upload failed: %08x %u\n", ng_read(NG_REG_FIRMWARE_CRC), ng_read(NG_REG_FIRMWARE_SIZE));
++		grab->fw_state=-1;
++	}
++	release_firmware(fw);
++	up(&grab->fw_sem);
++}
++
++static int grab_fw_proc_show(struct seq_file *m, void *v)
++{
++	struct grabber *grab=(struct grabber *)m->private;
++	unsigned long	ret=0;
++	seq_printf(m, "firmware: %i\n", grab->fw_state);
++	seq_printf(m, "board: %i\n", ng_read(NG_REG_BOARD_STATUS));
++	return ret;
++}
++
++static int grab_fw_proc_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, grab_fw_proc_show, PDE_DATA(inode));
++}
++
++static ssize_t grab_fw_proc_write(struct file *file, const char __user *buffer,
++				  size_t count, loff_t *pos)
++{
++	int res;
++	struct grabber *grab=(struct grabber *)PDE_DATA(file_inode(file));
++	char cmd[64];
++	size_t size;
++	u32 offset;
++	int fwid;
++	int i;
++	memset(cmd, 0, sizeof(cmd));
++	size = sizeof(cmd)-1;
++	if (count < size)
++		size = count;
++	if (copy_from_user(cmd, buffer, size))
++		return -EFAULT;
++
++	//remove cr/lf
++	for (i=0;i<size;i++)
++	{
++		if (cmd[i]=='\0')
++		{
++			break;
++		}
++		if ((cmd[i]=='\r')||(cmd[i]=='\n'))
++		{
++			cmd[i]='\0';
++			break;
++		}
++	}
++	if (sscanf(cmd, "%d", &fwid) == 1) 
++	{
++		int err;
++		memset(grab->fwfile, 0, sizeof(grab->fwfile));
++		snprintf(grab->fwfile, sizeof(grab->fwfile), "ngrabber_%d", fwid);
++		err=request_firmware_nowait(THIS_MODULE, 0, grab->fwfile, &grab->pdev->dev, GFP_KERNEL, grab, grabber_fw_cb);
++		if (err) 
++		{
++			dev_err(&grab->pdev->dev, "Firmware request failed: %i\n", err);
++			return err;
++		}
++	}
++	else
++	{
++		int err;
++		int i;
++		memset(grab->fwfile, 0, sizeof(grab->fwfile));
++		memcpy(grab->fwfile, cmd, size);
++		err=request_firmware_nowait(THIS_MODULE, 0, grab->fwfile, &grab->pdev->dev, GFP_KERNEL, grab, grabber_fw_cb);
++		if (err) 
++		{
++			dev_err(&grab->pdev->dev, "Firmware request failed: %i\n", err);
++			return err;
++		}
++	}
++
++	return count;
++
++}
++static const struct file_operations grab_fw_proc_fops = {
++	.owner		= THIS_MODULE,
++	.open		= grab_fw_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++	.write		= grab_fw_proc_write,
++};
++
++static int grab_diag_proc_show(struct seq_file *m, void *v)
++{
++	struct grabber *grab=(struct grabber *)m->private;
++	unsigned long	ret=0;
++//	seq_printf(m, "FRAME COUNT = %i %i\n", ng_read(NG_REG_VID_OUT_COUNT(channel->chan)), ng_read(NG_REG_VID_IN_COUNT(channel->chan)));
++	seq_printf(m, "BOARDID = 0x%08x\n", ng_read(NG_REG_BOARDID));
++	seq_printf(m, "INTERFACE VERSION = 0x%08x\n", ng_read(NG_REG_VERSION));
++	seq_printf(m, "FIRMWARE VERSION = 0x%08x\n", ng_read(NG_REG_FIRMWARE_VERSION));
++	seq_printf(m, "FIRMWARE DATE = 0x%08x\n", ng_read(NG_REG_FIRMWARE_BUILD));
++	seq_printf(m, "Driver Version = 0x%08x\n", NG_DRIVER_VER);
++	return ret;
++}
++
++static int grab_diag_proc_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, grab_diag_proc_show, PDE_DATA(inode));
++}
++
++
++static const struct file_operations grab_diag_proc_fops = {
++	.owner		= THIS_MODULE,
++	.open		= grab_diag_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
++
++/*
++ * The initial setup of this device instance. Note that the initial state of
++ * the driver should be complete. So the initial format, standard, timings
++ * and video input should all be initialized to some reasonable value.
++ */
++static int grabber_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
++{
++	/* The initial timings are chosen to be 720p60. */
++	struct grabber *grab = NULL;
++	struct video_device *vdev;
++	struct v4l2_ctrl_handler *hdl;
++	struct vb2_queue *q;
++	int ret;
++	char procname[18];
++	int vin_hactive = 0;
++	int vin_vactive = 0;
++	bool modefound=false;
++	int c;
++	int channels=0;
++
++	/* Enable PCI */
++	ret = pci_enable_device(pdev);
++	if (ret)
++		return ret;
++	ret = pci_set_dma_mask(pdev, DMA_BIT_MASK(32));
++	if (ret) {
++		dev_err(&pdev->dev, "no suitable DMA available.\n");
++		goto disable_pci;
++	}
++
++	/* Allocate a new instance */
++	grab = devm_kzalloc(&pdev->dev, sizeof(struct grabber), GFP_KERNEL);
++	if (!grab)
++		return -ENOMEM;
++	grab->nr=ngrabber_num++;
++	grab->pdev = pdev;
++	pci_set_drvdata(pdev, grab);
++
++	if(!request_mem_region(pci_resource_start(pdev, 0), pci_resource_len(pdev, 0), KBUILD_MODNAME))
++	{
++		dev_err(&pdev->dev, "Can't request iomem (0x%llx)\n", pci_resource_start(pdev, 0));
++		ret = -EBUSY;
++		goto free_hdl;
++	}
++
++	if(!request_region(pci_resource_start(pdev, 1), pci_resource_len(pdev, 1), KBUILD_MODNAME))
++	{
++		dev_err(&pdev->dev, "Can't request io (0x%llx)\n", pci_resource_start(pdev, 1));
++		ret = -EBUSY;
++		goto free_hdl;
++	}
++
++	if(!request_mem_region(pci_resource_start(pdev, 5), pci_resource_len(pdev, 5), KBUILD_MODNAME))
++	{
++		dev_err(&pdev->dev, "Can't request iomem (0x%llx)\n", pci_resource_start(pdev, 5));
++		ret = -EBUSY;
++		goto free_hdl;
++	}
++
++	pci_set_master(pdev);
++
++	grab->iobase = ioremap(pci_resource_start(pdev, 0)+NG_REG_OFFSET, NG_REG_LENGTH);
++	if(NULL == grab->iobase)
++	{
++    	dev_err(&pdev->dev, "ioremap() failed\n");
++    	ret = -EIO;
++    	goto free_hdl;
++	}
++	grab->fwbase = ioremap(pci_resource_start(pdev, 0)+NG_REG_OFFSET+NG_FW_OFFSET, NG_FW_LENGTH);
++	if(NULL == grab->iobase)
++	{
++    	dev_err(&pdev->dev, "ioremap() failed\n");
++    	ret = -EIO;
++    	goto free_hdl;
++	}
++
++	grab->bar1_iobase = pci_resource_start(pdev, 1);
++
++	grab->iobase_intc = ioremap(pci_resource_start(pdev, 5), pci_resource_len(pdev, 5));
++	if(NULL == grab->iobase_intc)
++	{
++    	dev_err(&pdev->dev, "ioremap() failed\n");
++    	ret = -EIO;
++    	goto free_hdl;
++	}
++
++	// Clear the interrupt mask
++	ng_write(NG_REG_IER, 0);
++
++	ret = devm_request_irq(&pdev->dev, pdev->irq,
++			       grabber_irq, IRQF_SHARED, KBUILD_MODNAME, grab);
++	if (ret) {
++		dev_err(&pdev->dev, "request_irq failed\n");
++		goto disable_pci;
++	}
++
++	outl((1<<4)|inl(grab->bar1_iobase + 0x28), grab->bar1_iobase+0x28);
++	switch(pdev->subsystem_device)
++	{
++		case SUBSYS_DEVICE_ID_NGSDI:
++		case SUBSYS_DEVICE_ID_HDGRABXSDI:
++		case SUBSYS_DEVICE_ID_HDGRABXHDMI:
++		case SUBSYS_DEVICE_ID_HDGRABXRGB:
++		default:
++			grab->numchannels=1;
++	}
++
++	for (c=0;c<grab->numchannels;c++)
++	{
++		grab->channels[c].grab=grab;
++		grab->channels[c].chan=c;
++		grab->channels[c].startbuffer=2*c;
++		grab->channels[c].numbuffers=2;
++		grab->channels[c].last_buffer=grab->channels[c].startbuffer;
++		grab->channels[c].buffermask=BIT_MASK_RANGE(grab->channels[c].startbuffer, grab->channels[c].startbuffer+grab->channels[c].numbuffers-1);
++
++		if(ng_debug>0)
++		{
++			dev_info(&grab->pdev->dev, "Channel: %u startbuffer: %u buffermask: %x\n", c, grab->channels[c].startbuffer, grab->channels[c].buffermask);
++		}
++
++		vin_hactive = ng_read(NG_REG_VID_IN_HACTIVE(grab->channels[c].chan));
++		vin_vactive = ng_read(NG_REG_VID_IN_VACTIVE(grab->channels[c].chan));
++		/* Fill in the initial format-related settings */
++		if(vmode==0) // Auto
++		{
++			int vin_mode = ng_read(NG_REG_VID_IN_MODE(grab->channels[c].chan));
++			if(ng_debug>0)
++			{
++				dev_info(&grab->pdev->dev, "Channel: %u vin_hactive: %u vin_vactive: %u vin_mode: %u\n", c, vin_hactive,vin_vactive, vin_mode);
++			}
++			if (vin_mode>0)		
++			{
++				//grab_gettimings_from_mode(channel->timings, vin_mode);
++				vmode=vin_mode;
++			}
++		}
++
++		if(vmode)
++		{
++			modefound=grab_gettimings_from_mode(&grab->channels[c].timings, vmode);
++		}
++		if (!modefound)
++		{
++			if (!grab_gettimings_from_active(&grab->channels[c].timings, vin_hactive, vin_vactive))
++			{
++				//all else fails, default to 720p60
++				grab_gettimings_from_mode(&grab->channels[c].timings, 4);
++			}
++		}
++
++		//channel->timings = timings_def;
++		grabber_fill_pix_format(&grab->channels[c], &grab->channels[c].format);
++
++		/* Initialize the top-level structure */
++		ret = v4l2_device_register(&pdev->dev, &grab->channels[c].v4l2_dev);
++		if (ret)
++			goto disable_pci;
++
++		mutex_init(&grab->channels[c].lock);
++
++		/* Add the controls */
++		hdl = &grab->channels[c].ctrl_handler;
++		v4l2_ctrl_handler_init(hdl, 4);
++		if (hdl->error) {
++			ret = hdl->error;
++			goto free_hdl;
++		}
++		grab->channels[c].v4l2_dev.ctrl_handler = hdl;
++
++		/* Initialize the vb2 queue */
++		q = &grab->channels[c].queue;
++		q->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
++		q->io_modes = VB2_MMAP | VB2_DMABUF | VB2_READ;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,8,0)
++		q->dev = &pdev->dev;
++#endif		
++		q->drv_priv = &grab->channels[c];
++		q->buf_struct_size = sizeof(struct grab_buffer);
++		q->ops = &grab_qops;
++		q->mem_ops = &vb2_dma_contig_memops;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,15,0)
++		q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
++		q->min_buffers_needed = 2;
++#else
++		q->timestamp_type = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
++#endif
++		q->lock = &grab->channels[c].lock;
++		/*
++		* limit to 32bit DMA ??
++		*/
++		q->gfp_flags = GFP_DMA32;
++		ret = vb2_queue_init(q);
++		if (ret)
++			goto free_hdl;
++
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4,8,0)
++		grab->channels[c].alloc_ctx = vb2_dma_contig_init_ctx(&pdev->dev);
++		if (IS_ERR(grab->channels[c].alloc_ctx)) {
++			dev_err(&pdev->dev, "Can't allocate buffer context");
++			ret = PTR_ERR(grab->channels[c].alloc_ctx);
++			goto free_hdl;
++		}
++#endif
++		INIT_LIST_HEAD(&grab->channels[c].buf_list);
++		spin_lock_init(&grab->channels[c].qlock);
++
++		/* Initialize the video_device structure */
++		vdev = &grab->channels[c].vdev;
++		strlcpy(vdev->name, KBUILD_MODNAME, sizeof(vdev->name));
++		/*
++		* There is nothing to clean up, so release is set to an empty release
++		* function. The release callback must be non-NULL.
++		*/
++		vdev->release = video_device_release_empty;
++		vdev->fops = &grab_fops,
++		vdev->ioctl_ops = &grab_ioctl_ops,
++		/*
++		* The main serialization lock. All ioctls are serialized by this
++		* lock. Exception: if q->lock is set, then the streaming ioctls
++		* are serialized by that separate lock.
++		*/
++		vdev->lock = &grab->channels[c].lock;
++		vdev->queue = q;
++		vdev->v4l2_dev = &grab->channels[c].v4l2_dev;
++		video_set_drvdata(vdev, &grab->channels[c]);
++
++		ret = video_register_device(vdev, VFL_TYPE_GRABBER, video_nr[ngrabber_devnum++]);
++		if (ret)
++			goto free_ctx;
++	}
++	sema_init(&grab->fw_sem, 1);
++	init_waitqueue_head(&grab->fw_wq);
++
++	sprintf(procname, "card%i", grab->nr);
++	grab->named_dir = proc_mkdir(procname, base_dir);
++	proc_create_data("firmware", 0666, grab->named_dir, &grab_fw_proc_fops, (void *)grab);
++	proc_create_data("diag", 0666, grab->named_dir, &grab_diag_proc_fops, (void *)grab);
++
++#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,20)
++	INIT_WORK(&grab->fw_ws, grab_fw_tasklet, (void *)(grab));
++#else
++	INIT_WORK(&grab->fw_ws, grab_fw_tasklet);
++#endif
++
++	//set the timestamp register using our system clock
++	{
++		struct timespec64 now;
++		s64 ts;
++		getnstimeofday64(&now);
++#if __BITS_PER_LONG == 64
++		ts=timespec64_to_ns(&now)/1000;
++#else
++		ts=timespec64_to_ns(&now);
++		do_div(ts,1000);
++#endif
++		ng_write(NG_REG_SYSTIME, (u32)(ts & 0xffffffff));
++		ng_write(NG_REG_SYSTIME+4, (u32)((ts>>32) & 0xffffffff));
++		ng_write(NG_REG_INT_SOURCE, 4);
++		outl(1<<9, grab->bar1_iobase+0x2c);
++	}
++
++
++	dev_info(&pdev->dev, "V4L2 nanoGrabber Driver loaded\n");
++
++	return 0;
++
++free_ctx:
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4,8,0)
++	for (c=0;c<grab->numchannels;c++)
++	{
++		if (grab->channels[c].alloc_ctx!=0)
++		{
++			vb2_dma_contig_cleanup_ctx(grab->channels[c].alloc_ctx);
++		}
++	}
++#endif
++free_hdl:
++	for (c=0;c<grab->numchannels;c++)
++	{
++		v4l2_ctrl_handler_free(&grab->channels[c].ctrl_handler);
++		v4l2_device_unregister(&grab->channels[c].v4l2_dev);
++	}
++disable_pci:
++	if(grab) {
++		if(grab->iobase) {
++			iounmap(grab->iobase);
++			grab->iobase = NULL;
++		}
++		if(grab->iobase_intc) {
++			iounmap(grab->iobase_intc);
++			grab->iobase_intc = NULL;
++		}
++	}
++	release_mem_region(pci_resource_start(pdev, 0), pci_resource_len(pdev, 0));
++	release_mem_region(pci_resource_start(pdev, 5), pci_resource_len(pdev, 5));
++	release_region(pci_resource_start(pdev, 1), pci_resource_len(pdev, 1));
++	pci_disable_device(pdev);
++	return ret;
++}
++
++static void grabber_remove(struct pci_dev *pdev)
++{
++	struct grabber *grab = pci_get_drvdata(pdev);
++	char procname[18];
++	int c;
++
++	//cancel the firmware task
++	grab->fw_state=0;
++	cancel_work_sync(&grab->fw_ws);
++
++	remove_proc_entry("firmware", grab->named_dir);
++	remove_proc_entry("diag", grab->named_dir);
++	sprintf(procname, "card%i", grab->nr);
++	remove_proc_entry(procname, base_dir);
++	for (c=0;c<grab->numchannels;c++)
++	{
++		video_unregister_device(&grab->channels[c].vdev);
++		v4l2_ctrl_handler_free(&grab->channels[c].ctrl_handler);
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4,8,0)		
++		vb2_dma_contig_cleanup_ctx(grab->channels[c].alloc_ctx);
++#endif
++		v4l2_device_unregister(&grab->channels[c].v4l2_dev);
++	}
++	if(grab->iobase) {
++		iounmap(grab->iobase);
++		grab->iobase = NULL;
++	}
++	if(grab->fwbase) {
++		iounmap(grab->fwbase);
++		grab->fwbase = NULL;
++	}
++	if(grab->iobase_intc) {
++		iounmap(grab->iobase_intc);
++		grab->iobase_intc = NULL;
++	}
++	devm_free_irq(&pdev->dev, pdev->irq, grab);
++	release_mem_region(pci_resource_start(pdev, 0), pci_resource_len(pdev, 0));
++	release_mem_region(pci_resource_start(pdev, 5), pci_resource_len(pdev, 5));
++	release_region(pci_resource_start(pdev, 1), pci_resource_len(pdev, 1));
++
++	pci_disable_device(grab->pdev);
++}
++
++static struct pci_driver grabber_driver = {
++	.name = KBUILD_MODNAME,
++	.probe = grabber_probe,
++	.remove = grabber_remove,
++	.id_table = grabber_pci_tbl,
++};
++
++static int grabber_init(void)
++{
++	if (base_dir==NULL)
++	{
++		base_dir = proc_mkdir("driver/ngrabber", NULL);
++	}
++  return pci_register_driver(&grabber_driver);
++}
++
++static void grabber_exit(void)
++{
++	pci_unregister_driver(&grabber_driver);
++	remove_proc_entry("driver/ngrabber",NULL);
++}
++
++//module_pci_driver(grabber_driver);
++module_init(grabber_init);
++module_exit(grabber_exit);
+diff --git a/drivers/video/ngrabber/ng-regs.h b/drivers/video/ngrabber/ng-regs.h
+new file mode 100644
+index 0000000..ad35cb2
+--- /dev/null
++++ b/drivers/video/ngrabber/ng-regs.h
+@@ -0,0 +1,88 @@
++#ifndef _NG_REGS_H_
++#define _NG_REGS_H_
++
++//#define NG_REG_OFFSET	0x01400000
++#define NG_REG_OFFSET	0
++#define NG_REG_LENGTH	0x4000
++
++#define NG_FW_OFFSET    0x00100000
++#define NG_FW_LENGTH    0x00300000  // 3x 1M
++#define NG_FW_CHUNKSIZE 0x00100000  // 1M
++
++#define NG_MAX_CHANNELS 8
++#define NG_MAX_BUFFERS 16
++
++#define NG_REG_BOARDID		0x0000
++#define NG_REG_VERSION		0x0004
++#define NG_REG_FIRMWARE_VERSION 0x0008
++#define NG_REG_ISR			0x0010
++#define NG_REG_IER			0x0014
++#define NG_REG_DMAINT       0x0018
++#define NG_REG_DMAERR       0x001c
++#define NG_REG_TIMESTAMP    0x0020	// 64bit
++#define NG_REG_MODECHANGE   0x0028
++#define NG_REG_FIRMWARE_CRC     0x0030
++#define NG_REG_FIRMWARE_SIZE   0x0034
++#define NG_REG_INT_SOURCE   0x0040
++#define NG_REG_FIRMWARE_BUILD   0x0050
++#define NG_REG_BOARD_STATUS   0x0054
++#define NG_REG_SYSTIME  0x60    //64bit
++#define NG_REG_UPTIME   0x68    //64bit
++
++// BUFFERS
++
++#define NG_REG_BUFF_ADDR_L(x)       0x1000 + (x*0x100)
++#define NG_REG_BUFF_ADDR_H(x)       0x1004 + (x*0x100)
++#define NG_REG_BUFF_SIZE(x)         0x1008 + (x*0x100)
++#define NG_REG_BUFF_FLAG(x)         0x100c + (x*0x100)
++#define NG_REG_BUFF_HEAD(x)         0x1010 + (x*0x100)
++#define NG_REG_BUFF_TAIL(x)         0x1014 + (x*0x100)
++#define NG_REG_BUFF_STATUS(x)       0x1018 + (x*0x100)
++#define NG_REG_BUFF_CHANNEL(x)      0x101c + (x*0x100)
++#define NG_REG_BUFF_TIMESTAMP_L(x)    0x1020 + (x*0x100)
++#define NG_REG_BUFF_TIMESTAMP_H(x)    0x1024 + (x*0x100)
++
++// VIDEO DATA format
++
++#define NG_REG_VID_OUT_FMT(x)       0x2000 + (x*0x100)
++#define NG_REG_VID_OUT_HACTIVE(x)   0x2004 + (x*0x100)
++#define NG_REG_VID_OUT_HSTART(x)    0x2008 + (x*0x100)
++#define NG_REG_VID_OUT_HTOTAL(x)    0x200c + (x*0x100)
++#define NG_REG_VID_OUT_VACTIVE(x)   0x2010 + (x*0x100)
++#define NG_REG_VID_OUT_VSTART(x)    0x2014 + (x*0x100)
++#define NG_REG_VID_OUT_VTOTAL(x)    0x2018 + (x*0x100)
++#define NG_REG_VID_OUT_PITCH(x)     0x201c + (x*0x100)
++#define NG_REG_VID_OUT_CTRL(x)      0x2020 + (x*0x100)
++#define NG_REG_VID_OUT_FPS_RATE(x)  0x2024 + (x*0x100)
++#define NG_REG_VID_OUT_FPS_SCALE(x) 0x2028 + (x*0x100)
++#define NG_REG_VID_OUT_FLAGS(x)     0x202c + (x*0x100)
++#define NG_REG_VID_OUT_COUNT(x)     0x2030 + (x*0x100)
++
++#define NG_REG_VID_OUT_BRIGHTNESS(x)  0x2040 + (x*0x100)
++#define NG_REG_VID_OUT_CONTRAST(x)    0x2044 + (x*0x100)
++#define NG_REG_VID_OUT_SATURATION(x)  0x2048 + (x*0x100)
++#define NG_REG_VID_OUT_HUE(x)         0x204c + (x*0x100)
++
++#define NG_REG_VID_IN_HACTIVE(x)    0x2804 + (x*0x100)
++#define NG_REG_VID_IN_HSTART(x)     0x2808 + (x*0x100)
++#define NG_REG_VID_IN_HTOTAL(x)     0x280c + (x*0x100)
++#define NG_REG_VID_IN_VACTIVE(x)    0x2810 + (x*0x100)
++#define NG_REG_VID_IN_VSTART(x)     0x2814 + (x*0x100)
++#define NG_REG_VID_IN_VTOTAL(x)     0x2818 + (x*0x100)
++#define NG_REG_VID_IN_FPS_RATE(x)   0x2820 + (x*0x100)
++#define NG_REG_VID_IN_FPS_SCALE(x)  0x2824 + (x*0x100)
++#define NG_REG_VID_IN_STATUS(x)     0x2828 + (x*0x100)
++#define NG_REG_VID_IN_MODE(x)       0x282c + (x*0x100)
++#define NG_REG_VID_IN_COUNT(x)      0x2830 + (x*0x100)
++
++
++// ISR
++
++#define NG_INT_DMA  0x00000001
++#define NG_INT_RESTORE 0x00000004
++#define NG_INT_DMAERR   0x00000008
++
++#define NG_INT_SRC_FW   0x00000001
++#define NG_INT_SRC_RESET    0x00000002
++
++#endif // _NG_REGS_H_
+diff --git a/drivers/video/ngrabber/videobuf2-dma-contig-3.10.c b/drivers/video/ngrabber/videobuf2-dma-contig-3.10.c
+new file mode 100644
+index 0000000..c765c8a
+--- /dev/null
++++ b/drivers/video/ngrabber/videobuf2-dma-contig-3.10.c
+@@ -0,0 +1,803 @@
++/*
++ * videobuf2-dma-contig.c - DMA contig memory allocator for videobuf2
++ *
++ * Copyright (C) 2010 Samsung Electronics
++ *
++ * Author: Pawel Osciak <pawel@osciak.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation.
++ */
++
++#include <linux/dma-buf.h>
++#include <linux/module.h>
++#include <linux/scatterlist.h>
++#include <linux/sched.h>
++#include <linux/slab.h>
++#include <linux/dma-mapping.h>
++
++#include <media/videobuf2-core.h>
++#include <media/videobuf2-dma-contig.h>
++#include <media/videobuf2-memops.h>
++
++#include <linux/version.h>
++
++#ifndef RHEL_RELEASE_VERSION
++#define RHEL_RELEASE_VERSION(a,b) (((a) << 8) + (b))
++#endif
++
++#ifndef RHEL_RELEASE_CODE
++#define RHEL_RELEASE_CODE 0
++#endif
++
++
++struct vb2_dc_conf {
++	struct device		*dev;
++};
++
++struct vb2_dc_buf {
++	struct device			*dev;
++	void				*vaddr;
++	unsigned long			size;
++	dma_addr_t			dma_addr;
++	enum dma_data_direction		dma_dir;
++	struct sg_table			*dma_sgt;
++
++	/* MMAP related */
++	struct vb2_vmarea_handler	handler;
++	atomic_t			refcount;
++	struct sg_table			*sgt_base;
++
++	/* USERPTR related */
++	struct vm_area_struct		*vma;
++
++	/* DMABUF related */
++	struct dma_buf_attachment	*db_attach;
++};
++
++/*********************************************/
++/*        scatterlist table functions        */
++/*********************************************/
++
++
++static void vb2_dc_sgt_foreach_page(struct sg_table *sgt,
++	void (*cb)(struct page *pg))
++{
++	struct scatterlist *s;
++	unsigned int i;
++
++	for_each_sg(sgt->sgl, s, sgt->orig_nents, i) {
++		struct page *page = sg_page(s);
++		unsigned int n_pages = PAGE_ALIGN(s->offset + s->length)
++			>> PAGE_SHIFT;
++		unsigned int j;
++
++		for (j = 0; j < n_pages; ++j, ++page)
++			cb(page);
++	}
++}
++
++static unsigned long vb2_dc_get_contiguous_size(struct sg_table *sgt)
++{
++	struct scatterlist *s;
++	dma_addr_t expected = sg_dma_address(sgt->sgl);
++	unsigned int i;
++	unsigned long size = 0;
++
++	for_each_sg(sgt->sgl, s, sgt->nents, i) {
++		if (sg_dma_address(s) != expected)
++			break;
++		expected = sg_dma_address(s) + sg_dma_len(s);
++		size += sg_dma_len(s);
++	}
++	return size;
++}
++
++/*********************************************/
++/*         callbacks for all buffers         */
++/*********************************************/
++
++static void *vb2_dc_cookie(void *buf_priv)
++{
++	struct vb2_dc_buf *buf = buf_priv;
++
++	return &buf->dma_addr;
++}
++
++static void *vb2_dc_vaddr(void *buf_priv)
++{
++	struct vb2_dc_buf *buf = buf_priv;
++
++	return buf->vaddr;
++}
++
++static unsigned int vb2_dc_num_users(void *buf_priv)
++{
++	struct vb2_dc_buf *buf = buf_priv;
++
++	return atomic_read(&buf->refcount);
++}
++
++static void vb2_dc_prepare(void *buf_priv)
++{
++	struct vb2_dc_buf *buf = buf_priv;
++	struct sg_table *sgt = buf->dma_sgt;
++
++	/* DMABUF exporter will flush the cache for us */
++	if (!sgt || buf->db_attach)
++		return;
++
++#if (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 4))
++	dma_sync_sg_for_device(buf->dev, sgt->sgl, sgt->nents, buf->dma_dir);
++#else
++	dma_sync_sg_for_device(buf->dev, sgt->sgl, sgt->orig_nents, buf->dma_dir);
++#endif
++}
++
++static void vb2_dc_finish(void *buf_priv)
++{
++	struct vb2_dc_buf *buf = buf_priv;
++	struct sg_table *sgt = buf->dma_sgt;
++
++	/* DMABUF exporter will flush the cache for us */
++	if (!sgt || buf->db_attach)
++		return;
++
++#if (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 4))
++	dma_sync_sg_for_cpu(buf->dev, sgt->sgl, sgt->nents, buf->dma_dir);
++#else
++	dma_sync_sg_for_cpu(buf->dev, sgt->sgl, sgt->orig_nents, buf->dma_dir);
++#endif
++}
++
++/*********************************************/
++/*        callbacks for MMAP buffers         */
++/*********************************************/
++
++static void vb2_dc_put(void *buf_priv)
++{
++	struct vb2_dc_buf *buf = buf_priv;
++
++	if (!atomic_dec_and_test(&buf->refcount))
++		return;
++
++	if (buf->sgt_base) {
++		sg_free_table(buf->sgt_base);
++		kfree(buf->sgt_base);
++	}
++	dma_free_coherent(buf->dev, buf->size, buf->vaddr, buf->dma_addr);
++	put_device(buf->dev);
++	kfree(buf);
++}
++
++static void *vb2_dc_alloc(void *alloc_ctx, unsigned long size, gfp_t gfp_flags)
++{
++	struct vb2_dc_conf *conf = alloc_ctx;
++	struct device *dev = conf->dev;
++	struct vb2_dc_buf *buf;
++
++	buf = kzalloc(sizeof *buf, GFP_KERNEL);
++	if (!buf)
++		return ERR_PTR(-ENOMEM);
++
++	buf->vaddr = dma_alloc_coherent(dev, size, &buf->dma_addr,
++						GFP_KERNEL | gfp_flags);
++	if (!buf->vaddr) {
++		dev_err(dev, "dma_alloc_coherent of size %ld failed\n", size);
++		kfree(buf);
++		return ERR_PTR(-ENOMEM);
++	}
++
++	/* Prevent the device from being released while the buffer is used */
++	buf->dev = get_device(dev);
++	buf->size = size;
++
++	buf->handler.refcount = &buf->refcount;
++	buf->handler.put = vb2_dc_put;
++	buf->handler.arg = buf;
++
++	atomic_inc(&buf->refcount);
++
++	return buf;
++}
++
++static int vb2_dc_mmap(void *buf_priv, struct vm_area_struct *vma)
++{
++	struct vb2_dc_buf *buf = buf_priv;
++	int ret;
++
++	if (!buf) {
++		printk(KERN_ERR "No buffer to map\n");
++		return -EINVAL;
++	}
++
++	/*
++	 * dma_mmap_* uses vm_pgoff as in-buffer offset, but we want to
++	 * map whole buffer
++	 */
++	vma->vm_pgoff = 0;
++
++	ret = dma_mmap_coherent(buf->dev, vma, buf->vaddr,
++		buf->dma_addr, buf->size);
++
++	if (ret) {
++		pr_err("Remapping memory failed, error: %d\n", ret);
++		return ret;
++	}
++
++	vma->vm_flags		|= VM_DONTEXPAND | VM_DONTDUMP;
++	vma->vm_private_data	= &buf->handler;
++	vma->vm_ops		= &vb2_common_vm_ops;
++
++	vma->vm_ops->open(vma);
++
++	pr_debug("%s: mapped dma addr 0x%08lx at 0x%08lx, size %ld\n",
++		__func__, (unsigned long)buf->dma_addr, vma->vm_start,
++		buf->size);
++
++	return 0;
++}
++
++/*********************************************/
++/*         DMABUF ops for exporters          */
++/*********************************************/
++
++struct vb2_dc_attachment {
++	struct sg_table sgt;
++	enum dma_data_direction dir;
++};
++
++static int vb2_dc_dmabuf_ops_attach(struct dma_buf *dbuf, struct device *dev,
++	struct dma_buf_attachment *dbuf_attach)
++{
++	struct vb2_dc_attachment *attach;
++	unsigned int i;
++	struct scatterlist *rd, *wr;
++	struct sg_table *sgt;
++	struct vb2_dc_buf *buf = dbuf->priv;
++	int ret;
++
++	attach = kzalloc(sizeof(*attach), GFP_KERNEL);
++	if (!attach)
++		return -ENOMEM;
++
++	sgt = &attach->sgt;
++	/* Copy the buf->base_sgt scatter list to the attachment, as we can't
++	 * map the same scatter list to multiple attachments at the same time.
++	 */
++	ret = sg_alloc_table(sgt, buf->sgt_base->orig_nents, GFP_KERNEL);
++	if (ret) {
++		kfree(attach);
++		return -ENOMEM;
++	}
++
++	rd = buf->sgt_base->sgl;
++	wr = sgt->sgl;
++	for (i = 0; i < sgt->orig_nents; ++i) {
++		sg_set_page(wr, sg_page(rd), rd->length, rd->offset);
++		rd = sg_next(rd);
++		wr = sg_next(wr);
++	}
++
++	attach->dir = DMA_NONE;
++	dbuf_attach->priv = attach;
++
++	return 0;
++}
++
++static void vb2_dc_dmabuf_ops_detach(struct dma_buf *dbuf,
++	struct dma_buf_attachment *db_attach)
++{
++	struct vb2_dc_attachment *attach = db_attach->priv;
++	struct sg_table *sgt;
++
++	if (!attach)
++		return;
++
++	sgt = &attach->sgt;
++
++	/* release the scatterlist cache */
++	if (attach->dir != DMA_NONE)
++		dma_unmap_sg(db_attach->dev, sgt->sgl, sgt->orig_nents,
++			attach->dir);
++	sg_free_table(sgt);
++	kfree(attach);
++	db_attach->priv = NULL;
++}
++
++static struct sg_table *vb2_dc_dmabuf_ops_map(
++	struct dma_buf_attachment *db_attach, enum dma_data_direction dir)
++{
++	struct vb2_dc_attachment *attach = db_attach->priv;
++	/* stealing dmabuf mutex to serialize map/unmap operations */
++	struct mutex *lock = &db_attach->dmabuf->lock;
++	struct sg_table *sgt;
++	int ret;
++
++	mutex_lock(lock);
++
++	sgt = &attach->sgt;
++	/* return previously mapped sg table */
++	if (attach->dir == dir) {
++		mutex_unlock(lock);
++		return sgt;
++	}
++
++	/* release any previous cache */
++	if (attach->dir != DMA_NONE) {
++		dma_unmap_sg(db_attach->dev, sgt->sgl, sgt->orig_nents,
++			attach->dir);
++		attach->dir = DMA_NONE;
++	}
++
++	/* mapping to the client with new direction */
++	ret = dma_map_sg(db_attach->dev, sgt->sgl, sgt->orig_nents, dir);
++	if (ret <= 0) {
++		pr_err("failed to map scatterlist\n");
++		mutex_unlock(lock);
++		return ERR_PTR(-EIO);
++	}
++
++	attach->dir = dir;
++
++	mutex_unlock(lock);
++
++	return sgt;
++}
++
++static void vb2_dc_dmabuf_ops_unmap(struct dma_buf_attachment *db_attach,
++	struct sg_table *sgt, enum dma_data_direction dir)
++{
++	/* nothing to be done here */
++}
++
++static void vb2_dc_dmabuf_ops_release(struct dma_buf *dbuf)
++{
++	/* drop reference obtained in vb2_dc_get_dmabuf */
++	vb2_dc_put(dbuf->priv);
++}
++
++static void *vb2_dc_dmabuf_ops_kmap(struct dma_buf *dbuf, unsigned long pgnum)
++{
++	struct vb2_dc_buf *buf = dbuf->priv;
++
++	return buf->vaddr + pgnum * PAGE_SIZE;
++}
++
++static void *vb2_dc_dmabuf_ops_vmap(struct dma_buf *dbuf)
++{
++	struct vb2_dc_buf *buf = dbuf->priv;
++
++	return buf->vaddr;
++}
++
++static int vb2_dc_dmabuf_ops_mmap(struct dma_buf *dbuf,
++	struct vm_area_struct *vma)
++{
++	return vb2_dc_mmap(dbuf->priv, vma);
++}
++
++static struct dma_buf_ops vb2_dc_dmabuf_ops = {
++	.attach = vb2_dc_dmabuf_ops_attach,
++	.detach = vb2_dc_dmabuf_ops_detach,
++	.map_dma_buf = vb2_dc_dmabuf_ops_map,
++	.unmap_dma_buf = vb2_dc_dmabuf_ops_unmap,
++	.kmap = vb2_dc_dmabuf_ops_kmap,
++	.kmap_atomic = vb2_dc_dmabuf_ops_kmap,
++	.vmap = vb2_dc_dmabuf_ops_vmap,
++	.mmap = vb2_dc_dmabuf_ops_mmap,
++	.release = vb2_dc_dmabuf_ops_release,
++};
++
++static struct sg_table *vb2_dc_get_base_sgt(struct vb2_dc_buf *buf)
++{
++	int ret;
++	struct sg_table *sgt;
++
++	sgt = kmalloc(sizeof(*sgt), GFP_KERNEL);
++	if (!sgt) {
++		dev_err(buf->dev, "failed to alloc sg table\n");
++		return NULL;
++	}
++
++	ret = dma_get_sgtable(buf->dev, sgt, buf->vaddr, buf->dma_addr,
++		buf->size);
++	if (ret < 0) {
++		dev_err(buf->dev, "failed to get scatterlist from DMA API\n");
++		kfree(sgt);
++		return NULL;
++	}
++
++	return sgt;
++}
++
++static struct dma_buf *vb2_dc_get_dmabuf(void *buf_priv)
++{
++	struct vb2_dc_buf *buf = buf_priv;
++	struct dma_buf *dbuf;
++#if (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 4))
++	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
++
++	exp_info.ops = &vb2_dc_dmabuf_ops;
++	exp_info.size = buf->size;
++	exp_info.flags = 0;
++	exp_info.priv = buf;
++#endif
++	if (!buf->sgt_base)
++		buf->sgt_base = vb2_dc_get_base_sgt(buf);
++
++	if (WARN_ON(!buf->sgt_base))
++		return NULL;
++#if (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 4))
++	dbuf = dma_buf_export(&exp_info);
++#else
++	dbuf = dma_buf_export(buf, &vb2_dc_dmabuf_ops, buf->size, 0);
++#endif
++	if (IS_ERR(dbuf))
++		return NULL;
++
++	/* dmabuf keeps reference to vb2 buffer */
++	atomic_inc(&buf->refcount);
++
++	return dbuf;
++}
++
++/*********************************************/
++/*       callbacks for USERPTR buffers       */
++/*********************************************/
++
++static inline int vma_is_io(struct vm_area_struct *vma)
++{
++	return !!(vma->vm_flags & (VM_IO | VM_PFNMAP));
++}
++
++static int vb2_dc_get_user_pages(unsigned long start, struct page **pages,
++	int n_pages, struct vm_area_struct *vma, int write)
++{
++	if (vma_is_io(vma)) {
++		unsigned int i;
++
++		for (i = 0; i < n_pages; ++i, start += PAGE_SIZE) {
++			unsigned long pfn;
++			int ret = follow_pfn(vma, start, &pfn);
++
++			if (ret) {
++				pr_err("no page for address %lu\n", start);
++				return ret;
++			}
++			pages[i] = pfn_to_page(pfn);
++		}
++	} else {
++		int n;
++
++		n = get_user_pages(current, current->mm, start & PAGE_MASK,
++			n_pages, write, 1, pages, NULL);
++		/* negative error means that no page was pinned */
++		n = max(n, 0);
++		if (n != n_pages) {
++			pr_err("got only %d of %d user pages\n", n, n_pages);
++			while (n)
++				put_page(pages[--n]);
++			return -EFAULT;
++		}
++	}
++
++	return 0;
++}
++
++static void vb2_dc_put_dirty_page(struct page *page)
++{
++	set_page_dirty_lock(page);
++	put_page(page);
++}
++
++static void vb2_dc_put_userptr(void *buf_priv)
++{
++	struct vb2_dc_buf *buf = buf_priv;
++	struct sg_table *sgt = buf->dma_sgt;
++
++	dma_unmap_sg(buf->dev, sgt->sgl, sgt->orig_nents, buf->dma_dir);
++	if (!vma_is_io(buf->vma))
++		vb2_dc_sgt_foreach_page(sgt, vb2_dc_put_dirty_page);
++
++	sg_free_table(sgt);
++	kfree(sgt);
++	vb2_put_vma(buf->vma);
++	kfree(buf);
++}
++
++static void *vb2_dc_get_userptr(void *alloc_ctx, unsigned long vaddr,
++	unsigned long size, int write)
++{
++	struct vb2_dc_conf *conf = alloc_ctx;
++	struct vb2_dc_buf *buf;
++	unsigned long start;
++	unsigned long end;
++	unsigned long offset;
++	struct page **pages;
++	int n_pages;
++	int ret = 0;
++	struct vm_area_struct *vma;
++	struct sg_table *sgt;
++	unsigned long contig_size;
++	unsigned long dma_align = dma_get_cache_alignment();
++
++	/* Only cache aligned DMA transfers are reliable */
++	if (!IS_ALIGNED(vaddr | size, dma_align)) {
++		pr_debug("user data must be aligned to %lu bytes\n", dma_align);
++		return ERR_PTR(-EINVAL);
++	}
++
++	if (!size) {
++		pr_debug("size is zero\n");
++		return ERR_PTR(-EINVAL);
++	}
++
++	buf = kzalloc(sizeof *buf, GFP_KERNEL);
++	if (!buf)
++		return ERR_PTR(-ENOMEM);
++
++	buf->dev = conf->dev;
++	buf->dma_dir = write ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
++
++	start = vaddr & PAGE_MASK;
++	offset = vaddr & ~PAGE_MASK;
++	end = PAGE_ALIGN(vaddr + size);
++	n_pages = (end - start) >> PAGE_SHIFT;
++
++	pages = kmalloc(n_pages * sizeof(pages[0]), GFP_KERNEL);
++	if (!pages) {
++		ret = -ENOMEM;
++		pr_err("failed to allocate pages table\n");
++		goto fail_buf;
++	}
++
++	/* current->mm->mmap_sem is taken by videobuf2 core */
++	vma = find_vma(current->mm, vaddr);
++	if (!vma) {
++		pr_err("no vma for address %lu\n", vaddr);
++		ret = -EFAULT;
++		goto fail_pages;
++	}
++
++	if (vma->vm_end < vaddr + size) {
++		pr_err("vma at %lu is too small for %lu bytes\n", vaddr, size);
++		ret = -EFAULT;
++		goto fail_pages;
++	}
++
++	buf->vma = vb2_get_vma(vma);
++	if (!buf->vma) {
++		pr_err("failed to copy vma\n");
++		ret = -ENOMEM;
++		goto fail_pages;
++	}
++
++	/* extract page list from userspace mapping */
++	ret = vb2_dc_get_user_pages(start, pages, n_pages, vma, write);
++	if (ret) {
++		pr_err("failed to get user pages\n");
++		goto fail_vma;
++	}
++
++	sgt = kzalloc(sizeof(*sgt), GFP_KERNEL);
++	if (!sgt) {
++		pr_err("failed to allocate sg table\n");
++		ret = -ENOMEM;
++		goto fail_get_user_pages;
++	}
++
++	ret = sg_alloc_table_from_pages(sgt, pages, n_pages,
++		offset, size, GFP_KERNEL);
++	if (ret) {
++		pr_err("failed to initialize sg table\n");
++		goto fail_sgt;
++	}
++
++	/* pages are no longer needed */
++	kfree(pages);
++	pages = NULL;
++
++	sgt->nents = dma_map_sg(buf->dev, sgt->sgl, sgt->orig_nents,
++		buf->dma_dir);
++	if (sgt->nents <= 0) {
++		pr_err("failed to map scatterlist\n");
++		ret = -EIO;
++		goto fail_sgt_init;
++	}
++
++	contig_size = vb2_dc_get_contiguous_size(sgt);
++	if (contig_size < size) {
++		pr_err("contiguous mapping is too small %lu/%lu\n",
++			contig_size, size);
++		ret = -EFAULT;
++		goto fail_map_sg;
++	}
++
++	buf->dma_addr = sg_dma_address(sgt->sgl);
++	buf->size = size;
++	buf->dma_sgt = sgt;
++
++	return buf;
++
++fail_map_sg:
++	dma_unmap_sg(buf->dev, sgt->sgl, sgt->orig_nents, buf->dma_dir);
++
++fail_sgt_init:
++	if (!vma_is_io(buf->vma))
++		vb2_dc_sgt_foreach_page(sgt, put_page);
++	sg_free_table(sgt);
++
++fail_sgt:
++	kfree(sgt);
++
++fail_get_user_pages:
++	if (pages && !vma_is_io(buf->vma))
++		while (n_pages)
++			put_page(pages[--n_pages]);
++
++fail_vma:
++	vb2_put_vma(buf->vma);
++
++fail_pages:
++	kfree(pages); /* kfree is NULL-proof */
++
++fail_buf:
++	kfree(buf);
++
++	return ERR_PTR(ret);
++}
++
++/*********************************************/
++/*       callbacks for DMABUF buffers        */
++/*********************************************/
++
++static int vb2_dc_map_dmabuf(void *mem_priv)
++{
++	struct vb2_dc_buf *buf = mem_priv;
++	struct sg_table *sgt;
++	unsigned long contig_size;
++
++	if (WARN_ON(!buf->db_attach)) {
++		pr_err("trying to pin a non attached buffer\n");
++		return -EINVAL;
++	}
++
++	if (WARN_ON(buf->dma_sgt)) {
++		pr_err("dmabuf buffer is already pinned\n");
++		return 0;
++	}
++
++	/* get the associated scatterlist for this buffer */
++	sgt = dma_buf_map_attachment(buf->db_attach, buf->dma_dir);
++	if (IS_ERR_OR_NULL(sgt)) {
++		pr_err("Error getting dmabuf scatterlist\n");
++		return -EINVAL;
++	}
++
++	/* checking if dmabuf is big enough to store contiguous chunk */
++	contig_size = vb2_dc_get_contiguous_size(sgt);
++	if (contig_size < buf->size) {
++		pr_err("contiguous chunk is too small %lu/%lu b\n",
++			contig_size, buf->size);
++		dma_buf_unmap_attachment(buf->db_attach, sgt, buf->dma_dir);
++		return -EFAULT;
++	}
++
++	buf->dma_addr = sg_dma_address(sgt->sgl);
++	buf->dma_sgt = sgt;
++
++	return 0;
++}
++
++static void vb2_dc_unmap_dmabuf(void *mem_priv)
++{
++	struct vb2_dc_buf *buf = mem_priv;
++	struct sg_table *sgt = buf->dma_sgt;
++
++	if (WARN_ON(!buf->db_attach)) {
++		pr_err("trying to unpin a not attached buffer\n");
++		return;
++	}
++
++	if (WARN_ON(!sgt)) {
++		pr_err("dmabuf buffer is already unpinned\n");
++		return;
++	}
++
++	dma_buf_unmap_attachment(buf->db_attach, sgt, buf->dma_dir);
++
++	buf->dma_addr = 0;
++	buf->dma_sgt = NULL;
++}
++
++static void vb2_dc_detach_dmabuf(void *mem_priv)
++{
++	struct vb2_dc_buf *buf = mem_priv;
++
++	/* if vb2 works correctly you should never detach mapped buffer */
++	if (WARN_ON(buf->dma_addr))
++		vb2_dc_unmap_dmabuf(buf);
++
++	/* detach this attachment */
++	dma_buf_detach(buf->db_attach->dmabuf, buf->db_attach);
++	kfree(buf);
++}
++
++static void *vb2_dc_attach_dmabuf(void *alloc_ctx, struct dma_buf *dbuf,
++	unsigned long size, int write)
++{
++	struct vb2_dc_conf *conf = alloc_ctx;
++	struct vb2_dc_buf *buf;
++	struct dma_buf_attachment *dba;
++
++	if (dbuf->size < size)
++		return ERR_PTR(-EFAULT);
++
++	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
++	if (!buf)
++		return ERR_PTR(-ENOMEM);
++
++	buf->dev = conf->dev;
++	/* create attachment for the dmabuf with the user device */
++	dba = dma_buf_attach(dbuf, buf->dev);
++	if (IS_ERR(dba)) {
++		pr_err("failed to attach dmabuf\n");
++		kfree(buf);
++		return dba;
++	}
++
++	buf->dma_dir = write ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
++	buf->size = size;
++	buf->db_attach = dba;
++
++	return buf;
++}
++
++/*********************************************/
++/*       DMA CONTIG exported functions       */
++/*********************************************/
++
++const struct vb2_mem_ops vb2_dma_contig_memops = {
++	.alloc		= vb2_dc_alloc,
++	.put		= vb2_dc_put,
++	.get_dmabuf	= vb2_dc_get_dmabuf,
++	.cookie		= vb2_dc_cookie,
++	.vaddr		= vb2_dc_vaddr,
++	.mmap		= vb2_dc_mmap,
++	.get_userptr	= vb2_dc_get_userptr,
++	.put_userptr	= vb2_dc_put_userptr,
++	.prepare	= vb2_dc_prepare,
++	.finish		= vb2_dc_finish,
++	.map_dmabuf	= vb2_dc_map_dmabuf,
++	.unmap_dmabuf	= vb2_dc_unmap_dmabuf,
++	.attach_dmabuf	= vb2_dc_attach_dmabuf,
++	.detach_dmabuf	= vb2_dc_detach_dmabuf,
++	.num_users	= vb2_dc_num_users,
++};
++EXPORT_SYMBOL_GPL(vb2_dma_contig_memops);
++
++void *vb2_dma_contig_init_ctx(struct device *dev)
++{
++	struct vb2_dc_conf *conf;
++
++	conf = kzalloc(sizeof *conf, GFP_KERNEL);
++	if (!conf)
++		return ERR_PTR(-ENOMEM);
++
++	conf->dev = dev;
++
++	return conf;
++}
++EXPORT_SYMBOL_GPL(vb2_dma_contig_init_ctx);
++
++void vb2_dma_contig_cleanup_ctx(void *alloc_ctx)
++{
++	kfree(alloc_ctx);
++}
++EXPORT_SYMBOL_GPL(vb2_dma_contig_cleanup_ctx);
++
++MODULE_DESCRIPTION("DMA-contig memory handling routines for videobuf2");
++MODULE_AUTHOR("Pawel Osciak <pawel@osciak.com>");
++MODULE_LICENSE("GPL");
+-- 
+1.9.1
+
