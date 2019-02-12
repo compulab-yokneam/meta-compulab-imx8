@@ -1,11 +1,5 @@
 #!/bin/bash
 
-add_chrome() {
-# Chromium
-CORE_IMAGE_EXTRA_INSTALL_append+=" chromium libexif"
-sed -i "$ a LICENSE_FLAGS_WHITELIST=\"commercial\"\nPNBLACKLIST[chromium] = \"\"" ${LOCAL_CONF}
-}
-
 CWD=$(pwd)
 PROGNAME=${BASH_SOURCE[0]}
 [ $(basename -- $BASH_SOURCE) == $(basename -- $0) ] && EXIT="exit" || EXIT="return"
@@ -54,9 +48,6 @@ IMAGE_FEATURES_append=" package-management ssh-server-openssh"
 case ${DISTRO} in
     fsl-imx-x11)
     CORE_IMAGE_EXTRA_INSTALL_append+=" xf86-video-fbdev"
-    ;&
-    fsl-imx-xwayland)
-    add_chrome
     ;;
     *)
     ;;
