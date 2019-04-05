@@ -1,0 +1,41 @@
+From bb4ee081b30727ce46bd201c698ba6324c4b14f9 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Fri, 29 Mar 2019 09:26:00 +0300
+Subject: [PATCH 26/27] cl-som-imx8: Enable meminfo, mtest
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ configs/cl-som-imx8_defconfig | 2 ++
+ include/configs/cl-som-imx8.h | 3 +++
+ 2 files changed, 5 insertions(+)
+
+diff --git a/configs/cl-som-imx8_defconfig b/configs/cl-som-imx8_defconfig
+index 5623218..f19c5c1 100644
+--- a/configs/cl-som-imx8_defconfig
++++ b/configs/cl-som-imx8_defconfig
+@@ -8,6 +8,8 @@ CONFIG_SPL_LOAD_FIT=y
+ CONFIG_SYS_EXTRA_OPTIONS="IMX_CONFIG=arch/arm/imx-common/spl_sd.cfg"
+ CONFIG_SPL=y
+ CONFIG_HUSH_PARSER=y
++CONFIG_CMD_MEMTEST=y
++CONFIG_CMD_MEMINFO=y
+ CONFIG_CMD_I2C=y
+ CONFIG_CMD_GPIO=y
+ CONFIG_CMD_CACHE=y
+diff --git a/include/configs/cl-som-imx8.h b/include/configs/cl-som-imx8.h
+index 26b4d73..2d7344c 100644
+--- a/include/configs/cl-som-imx8.h
++++ b/include/configs/cl-som-imx8.h
+@@ -197,6 +197,9 @@
+ #define PHYS_SDRAM_SIZE			0x80000000 /* 2GB DDR */
+ #define CONFIG_NR_DRAM_BANKS		1
+ 
++#define CONFIG_SYS_MEMTEST_START    PHYS_SDRAM
++#define CONFIG_SYS_MEMTEST_END      (CONFIG_SYS_MEMTEST_START + (PHYS_SDRAM_SIZE >> 1))
++
+ #define CONFIG_BAUDRATE			115200
+ 
+ #define CONFIG_MXC_UART
+-- 
+1.9.1
+

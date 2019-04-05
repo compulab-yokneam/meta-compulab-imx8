@@ -21,5 +21,11 @@ SRC_URI_append_cl-som-imx8 = " \
 	file://0019-cl-som-imx8-Add-memory-detection-support.patch \
 	file://0020-cl-som-imx8-Add-memory-selection-support.patch \
 	file://0021-cl-som-imx8-dts-Change-compatibility-string.patch \
+	file://0022-cl-som-imx8-Remove-the-platform-reset-rev1.1.patch \
+	file://0023-cl-som-imx8-dts-Enable-wdog1-for-reset.patch \
+	file://0024-cl-som-imx8-Fix-the-compiler-warnings.patch \
+	file://0025-cl-som-imx8-Enable-HDMI-output.patch \
+	file://0026-cl-som-imx8-Enable-meminfo-mtest.patch \
+	file://0027-cl-som-imx8-defconfig-Set-LOCALVERSION.patch \
 	file://cl-som-imx8_defconfig \
 "

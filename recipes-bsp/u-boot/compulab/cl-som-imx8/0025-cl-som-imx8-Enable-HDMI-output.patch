@@ -1,0 +1,123 @@
+From 0edab225e22413e46b159ad5bd9406bb714a90f0 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Tue, 8 Jan 2019 09:40:14 +0200
+Subject: [PATCH 25/27] cl-som-imx8: Enable HDMI output
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+
+Conflicts:
+	configs/cl-som-imx8_defconfig
+---
+ board/compulab/cl-som-imx8/cl-som-imx8.c | 48 ++++++++++++++++++++++++++++++++
+ configs/cl-som-imx8_defconfig            |  2 ++
+ include/configs/cl-som-imx8.h            | 14 +++++++++-
+ 3 files changed, 63 insertions(+), 1 deletion(-)
+
+diff --git a/board/compulab/cl-som-imx8/cl-som-imx8.c b/board/compulab/cl-som-imx8/cl-som-imx8.c
+index 6167232..922d674 100644
+--- a/board/compulab/cl-som-imx8/cl-som-imx8.c
++++ b/board/compulab/cl-som-imx8/cl-som-imx8.c
+@@ -20,6 +20,8 @@
+ #include <asm/imx-common/gpio.h>
+ #include <asm/imx-common/mxc_i2c.h>
+ #include <asm/arch/clock.h>
++#include <asm/imx-common/video.h>
++#include <asm/arch/video_common.h>
+ #include <spl.h>
+ #include <power/pmic.h>
+ #include <power/pfuze100_pmic.h>
+@@ -286,3 +288,49 @@ int is_recovery_key_pressing(void)
+ }
+ #endif /*CONFIG_ANDROID_RECOVERY*/
+ #endif /*CONFIG_FSL_FASTBOOT*/
++
++#if defined(CONFIG_VIDEO_IMXDCSS)
++
++struct display_info_t const displays[] = {{
++	.bus	= 0, /* Unused */
++	.addr	= 0, /* Unused */
++	.pixfmt	= GDF_32BIT_X888RGB,
++	.detect	= NULL,
++	.enable	= NULL,
++#ifndef CONFIG_VIDEO_IMXDCSS_1080P
++	.mode	= {
++		.name           = "HDMI", /* 720P60 */
++		.refresh        = 60,
++		.xres           = 1280,
++		.yres           = 720,
++		.pixclock       = 13468, /* 74250  kHz */
++		.left_margin    = 110,
++		.right_margin   = 220,
++		.upper_margin   = 5,
++		.lower_margin   = 20,
++		.hsync_len      = 40,
++		.vsync_len      = 5,
++		.sync           = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
++		.vmode          = FB_VMODE_NONINTERLACED
++	}
++#else
++	.mode	= {
++		.name           = "HDMI", /* 1080P60 */
++		.refresh        = 60,
++		.xres           = 1920,
++		.yres           = 1080,
++		.pixclock       = 6734, /* 148500 kHz */
++		.left_margin    = 148,
++		.right_margin   = 88,
++		.upper_margin   = 36,
++		.lower_margin   = 4,
++		.hsync_len      = 44,
++		.vsync_len      = 5,
++		.sync           = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
++		.vmode          = FB_VMODE_NONINTERLACED
++	}
++#endif
++} };
++size_t display_count = ARRAY_SIZE(displays);
++
++#endif /* CONFIG_VIDEO_IMXDCSS */
+diff --git a/configs/cl-som-imx8_defconfig b/configs/cl-som-imx8_defconfig
+index 32b81a9..5623218 100644
+--- a/configs/cl-som-imx8_defconfig
++++ b/configs/cl-som-imx8_defconfig
+@@ -31,3 +31,5 @@ CONFIG_DM_REGULATOR_PFUZE100=y
+ CONFIG_DM_REGULATOR_FIXED=y
+ CONFIG_DM_REGULATOR_GPIO=y
+ CONFIG_DM_THERMAL=y
++CONFIG_VIDEO_IMX8_HDMI=y
++CONFIG_VIDEO=y
+diff --git a/include/configs/cl-som-imx8.h b/include/configs/cl-som-imx8.h
+index 0c31c14..26b4d73 100644
+--- a/include/configs/cl-som-imx8.h
++++ b/include/configs/cl-som-imx8.h
+@@ -190,7 +190,7 @@
+ #define CONFIG_SYS_MMC_ENV_DEV		0   /* USDHC1/eMMC */
+ 
+ /* Size of malloc() pool */
+-#define CONFIG_SYS_MALLOC_LEN		((CONFIG_ENV_SIZE + (2*1024)) * 1024)
++#define CONFIG_SYS_MALLOC_LEN		((CONFIG_ENV_SIZE + (2*1024) + (16*1024)) * 1024)
+ 
+ #define CONFIG_SYS_SDRAM_BASE           0x40000000
+ #define PHYS_SDRAM                      0x40000000
+@@ -303,6 +303,18 @@
+ 
+ #define CONFIG_OF_SYSTEM_SETUP
+ 
++/* Framebuffer */
++#ifdef CONFIG_VIDEO
++#define CONFIG_VIDEO_IMXDCSS
++#define CONFIG_VIDEO_BMP_RLE8
++#define CONFIG_SPLASH_SCREEN
++#define CONFIG_SPLASH_SCREEN_ALIGN
++#define CONFIG_BMP_16BPP
++#define CONFIG_VIDEO_LOGO
++#define CONFIG_VIDEO_BMP_LOGO
++#define CONFIG_IMX_VIDEO_SKIP
++#endif
++
+ #if defined(CONFIG_ANDROID_SUPPORT)
+ #include "cl-som-imx8_android.h"
+ #endif
+-- 
+1.9.1
+

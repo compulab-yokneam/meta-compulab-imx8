@@ -1,0 +1,32 @@
+From 54a9ee42d5039fa2f5a8b7300b5796a47651feb7 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Fri, 5 Apr 2019 23:15:13 +0300
+Subject: [PATCH 27/27] cl-som-imx8: defconfig: Set LOCALVERSION
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ configs/cl-som-imx8_defconfig | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/configs/cl-som-imx8_defconfig b/configs/cl-som-imx8_defconfig
+index f19c5c1..6f28c8b 100644
+--- a/configs/cl-som-imx8_defconfig
++++ b/configs/cl-som-imx8_defconfig
+@@ -2,7 +2,9 @@ CONFIG_ARM=y
+ CONFIG_ARCH_IMX8M=y
+ CONFIG_SYS_MALLOC_F_LEN=0x2000
+ CONFIG_TARGET_CL_SOM_IMX8=y
++CONFIG_VIDEO=y
+ CONFIG_DEFAULT_DEVICE_TREE="cl-som-imx8"
++CONFIG_LOCALVERSION="-cl-som-imx8-rev1.1"
+ CONFIG_FIT=y
+ CONFIG_SPL_LOAD_FIT=y
+ CONFIG_SYS_EXTRA_OPTIONS="IMX_CONFIG=arch/arm/imx-common/spl_sd.cfg"
+@@ -34,4 +36,3 @@ CONFIG_DM_REGULATOR_FIXED=y
+ CONFIG_DM_REGULATOR_GPIO=y
+ CONFIG_DM_THERMAL=y
+ CONFIG_VIDEO_IMX8_HDMI=y
+-CONFIG_VIDEO=y
+-- 
+1.9.1
+
