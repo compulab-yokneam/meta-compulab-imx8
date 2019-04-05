@@ -1,0 +1,40 @@
+From d7b857fbd956bab94d23a34e752cd50ed3476389 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Fri, 5 Apr 2019 21:57:48 +0300
+Subject: [PATCH 71/72] cl-som-imx8: mach-imx: Update for rev1.1
+
+Signed-off-by: Valentin Raevsky <valentin@compulab.co.il>
+---
+ arch/arm64/mach-imx/mach-cl_som_imx8.c | 9 ---------
+ 1 file changed, 9 deletions(-)
+
+diff --git a/arch/arm64/mach-imx/mach-cl_som_imx8.c b/arch/arm64/mach-imx/mach-cl_som_imx8.c
+index eb3535a..4be88f6 100644
+--- a/arch/arm64/mach-imx/mach-cl_som_imx8.c
++++ b/arch/arm64/mach-imx/mach-cl_som_imx8.c
+@@ -7,14 +7,6 @@
+ #include <linux/mfd/syscon/imx8mq-iomuxc-gpr.h>
+ #include <linux/regmap.h>
+ 
+-extern void (*arm_pm_restart)(enum reboot_mode reboot_mode, const char *cmd);
+-
+-void board_pm_restart(enum reboot_mode reboot_mode, const char *cmd)
+-{
+-	gpio_request(79, "board-reset");
+-	gpio_direction_output(79, 0);
+-}
+-
+ static void gpr_init(void)
+ {
+ 	struct regmap *gpr;
+@@ -37,7 +29,6 @@ static int cl_som_imx8_init(void)
+ 	if (!np)
+ 		return 0;
+ 
+-	arm_pm_restart = board_pm_restart;
+ 	gpr_init();
+ 	
+ 	return 0;
+-- 
+1.9.1
+
