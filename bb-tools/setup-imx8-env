@@ -1,4 +1,22 @@
+#!/bin/bash
+
+get_meta_compulab() {
+meta_cpl_dir="../sources/meta-compulab"
+branch="devel"
+meta_url="https://github.com/compulab-yokneam/meta-compulab"
+if [[ -d ${meta_cpl_dir} ]];then
+git -C ${meta_cpl_dir} remote update
+git -C ${meta_cpl_dir} pull
+else
+git clone -b ${branch} ${meta_url} ${meta_cpl_dir}
+fi
+}
+
+
+EULA=1
 . fsl-setup-release.sh $@
+
+get_meta_compulab
 
 declare -a ENVIRONMENT=('../sources/meta-compulab/bb-tools/setup-compulab-env' \
 			'../sources/meta-compulab-imx8/bb-tools/setup-compulab-env')
