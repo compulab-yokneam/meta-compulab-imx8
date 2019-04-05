@@ -42,7 +42,7 @@ eom
 sed -i '$aBBLAYERS += " ${BSPDIR}/sources/meta-compulab-imx8 "' ${BBLAYERS_CONF}
 
 # local.conf
-CORE_IMAGE_EXTRA_INSTALL_append=" cl-deploy cl-uboot bt-start dhcp-client imx-gpu-viv-demos"
+CORE_IMAGE_EXTRA_INSTALL_append=" cl-deploy cl-uboot dhcp-client imx-gpu-viv-demos"
 IMAGE_FEATURES_append=" package-management ssh-server-openssh"
 
 case ${DISTRO} in
