@@ -70,5 +70,6 @@ SRC_URI_append_cl-som-imx8 = " \
 	file://0068-cl-som-imx8-config-Enable-goodix-touch-screen.patch \
 	file://0069-cl-som-imx8-config-make-MCS7830-y.patch \
 	file://0070-driver-video-Add-ngrabber.patch \
+	file://0071-cl-som-imx8-Create-a-separate-thermal-test-dts.patch \
 	file://defconfig \
 "
