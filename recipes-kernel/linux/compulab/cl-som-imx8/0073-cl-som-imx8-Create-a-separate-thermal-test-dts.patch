@@ -1,0 +1,78 @@
+From 2a65a1c7c12d2dc24a0f1418866c833932a37117 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Mon, 8 Apr 2019 18:45:37 +0300
+Subject: [PATCH 73/73] cl-som-imx8: Create a separate thermal test dts
+
+Create a separate thermal test dts.
+Remove TI/TE trip points from the main dts file.
+---
+ arch/arm64/boot/dts/compulab/Makefile              |  1 +
+ .../boot/dts/compulab/cl-som-imx8-thermal.dts      | 24 ++++++++++++++++++++++
+ arch/arm64/boot/dts/compulab/cl-som-imx8.dts       |  8 --------
+ 3 files changed, 25 insertions(+), 8 deletions(-)
+ create mode 100644 arch/arm64/boot/dts/compulab/cl-som-imx8-thermal.dts
+
+diff --git a/arch/arm64/boot/dts/compulab/Makefile b/arch/arm64/boot/dts/compulab/Makefile
+index b33516d..c308778 100644
+--- a/arch/arm64/boot/dts/compulab/Makefile
++++ b/arch/arm64/boot/dts/compulab/Makefile
+@@ -3,6 +3,7 @@ dtb-$(CONFIG_ARCH_FSL_IMX8MQ) += cl-som-imx8-lvds-dcss.dtb
+ dtb-$(CONFIG_ARCH_FSL_IMX8MQ) += cl-som-imx8-lvds-lcdif.dtb
+ dtb-$(CONFIG_ARCH_FSL_IMX8MQ) += cl-som-imx8-dual.dtb
+ dtb-$(CONFIG_ARCH_FSL_IMX8MQ) += cl-som-imx8-csi.dtb
++dtb-$(CONFIG_ARCH_FSL_IMX8MQ) += cl-som-imx8-thermal.dtb
+ 				
+ always		:= $(dtb-y)
+ subdir-y	:= $(dts-dirs)
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8-thermal.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8-thermal.dts
+new file mode 100644
+index 0000000..47cefd1
+--- /dev/null
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8-thermal.dts
+@@ -0,0 +1,24 @@
++/*
++ * Copyright (C) 2019 CopuLab Ltd.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#include "cl-som-imx8.dts"
++
++&cpu_alert0 {
++	temperature = <125000>;
++};
++
++&cpu_crit0 {
++	temperature = <165000>;
++};
++
+diff --git a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+index b0dc4bf..fb9d244 100644
+--- a/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
++++ b/arch/arm64/boot/dts/compulab/cl-som-imx8.dts
+@@ -818,14 +818,6 @@
+ 	status = "okay";
+ };
+ 
+-&cpu_alert0 {
+-	temperature = <125000>;
+-};
+-
+-&cpu_crit0 {
+-	temperature = <165000>;
+-};
+-
+ &rpmsg {
+ 	/*
+ 	 * 64K for one rpmsg instance:
+-- 
+1.9.1
+

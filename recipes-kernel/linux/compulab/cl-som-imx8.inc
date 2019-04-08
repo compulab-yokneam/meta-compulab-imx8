@@ -72,5 +72,6 @@ SRC_URI_append_cl-som-imx8 = " \
 	file://0070-cl-som-imx8-dts-Update-for-rev1.1.patch \
 	file://0071-cl-som-imx8-mach-imx-Update-for-rev1.1.patch \
 	file://0072-cl-som-imx8-defconfig-Update-for-rev1.1.patch \
+	file://0073-cl-som-imx8-Create-a-separate-thermal-test-dts.patch \
 	file://defconfig \
 "
