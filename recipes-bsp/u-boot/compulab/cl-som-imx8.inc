@@ -21,5 +21,6 @@ SRC_URI_append_cl-som-imx8 = " \
 	file://0019-cl-som-imx8-Add-memory-detection-support.patch \
 	file://0020-cl-som-imx8-Add-memory-selection-support.patch \
 	file://0021-cl-som-imx8-dts-Change-compatibility-string.patch \
+	file://0023-cl-som-imx8-Update-memory-init-code-2-2.patch \
 	file://cl-som-imx8_defconfig \
 "
