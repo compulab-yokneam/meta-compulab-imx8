@@ -27,5 +27,6 @@ SRC_URI_append_cl-som-imx8 = " \
 	file://0025-cl-som-imx8-Enable-HDMI-output.patch \
 	file://0026-cl-som-imx8-Enable-meminfo-mtest.patch \
 	file://0027-cl-som-imx8-defconfig-Set-LOCALVERSION.patch \
+	file://0029-cl-som-imx8-Update-memory-init-code-2-2.patch \
 	file://cl-som-imx8_defconfig \
 "
